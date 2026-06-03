@@ -9,6 +9,7 @@ import StudentAssignmentDetailPage from '../pages/student/assignments/detail'
 import StudentSummariesPage from '../pages/student/summaries'
 import StudentLearningPlansPage from '../pages/student/learning-plans'
 import TeacherAssignmentsPage from '../pages/teacher/assignments'
+import TeacherAssignmentCreatePage from '../pages/teacher/assignments/create'
 import TeacherAssignmentDetailPage from '../pages/teacher/assignments/detail'
 import TeacherGradingPage from '../pages/teacher/grading'
 import TeacherAnalyzePage from '../pages/teacher/analyze'
@@ -53,6 +54,7 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <Navigate to="/teacher/assignments" replace /> },
       { path: 'assignments', element: <TeacherAssignmentsPage /> },
+      { path: 'assignments/create', element: <TeacherAssignmentCreatePage /> },
       { path: 'assignments/:assignmentId', element: <TeacherAssignmentDetailPage /> },
       { path: 'grading', element: <TeacherGradingPage /> },
       { path: 'analyze', element: <TeacherAnalyzePage /> },

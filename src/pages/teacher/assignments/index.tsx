@@ -1,257 +1,291 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router'
 import {
-  getTeacherAssignments,
-  publishAssignment,
   closeAssignment,
+  getTeacherAssignments,
 } from '../../../api/teacherAssignments'
 import type { TeacherAssignmentItem } from '../../../types/api'
+
+type AssignmentStatusFilter = '' | 'open' | 'closed'
+
+const statusOptions: Array<{ label: string; value: AssignmentStatusFilter }> = [
+  { label: '全部', value: '' },
+  { label: '进行中', value: 'open' },
+  { label: '已关闭', value: 'closed' },
+]
+
+function getErrorMessage(error: unknown, fallback: string) {
+  const data = (error as { response?: { data?: { detail?: string; message?: string } } })
+    ?.response?.data
+
+  return data?.detail || data?.message || fallback
+}
+
+function formatDateTime(value: string) {
+  return new Date(value).toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
 
 export default function TeacherAssignmentsPage() {
   const [items, setItems] = useState<TeacherAssignmentItem[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshKey, setRefreshKey] = useState(0)
-  const [showCreate, setShowCreate] = useState(false)
-  const [error, setError] = useState('')
-  const [publishing, setPublishing] = useState(false)
+  const [pageError, setPageError] = useState('')
+  const [closingId, setClosingId] = useState('')
   const [filterCourse, setFilterCourse] = useState('')
-  const [filterStatus, setFilterStatus] = useState('')
-
-  // 发布表单
-  const [title, setTitle] = useState('')
-  const [course, setCourse] = useState('')
-  const [description, setDescription] = useState('')
-  const [dueAt, setDueAt] = useState('')
-  const [referenceAnswer, setReferenceAnswer] = useState('')
-  const [rubric, setRubric] = useState('')
+  const [filterStatus, setFilterStatus] = useState<AssignmentStatusFilter>('')
 
   useEffect(() => {
     let cancelled = false
+
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true)
+    setPageError('')
     getTeacherAssignments({
       course: filterCourse || undefined,
       status: filterStatus || undefined,
     })
       .then((res) => {
-        if (!cancelled && res.success) setItems(res.data.items)
+        if (!cancelled && res.success) {
+          setItems(res.data.items)
+        }
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          setItems([])
+          setPageError(getErrorMessage(error, '作业列表加载失败，请稍后重试'))
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
       })
+
     return () => {
       cancelled = true
     }
   }, [filterCourse, filterStatus, refreshKey])
 
-  const handlePublish = async (e: FormEvent) => {
-    e.preventDefault()
-    if (!title.trim() || !course.trim() || !description.trim() || !dueAt) {
-      setError('标题、课程、要求和截止时间为必填项')
-      return
-    }
-    setError('')
-    setPublishing(true)
-    try {
-      await publishAssignment({
-        title: title.trim(),
-        course: course.trim(),
-        description: description.trim(),
-        due_at: new Date(dueAt).toISOString(),
-        reference_answer: referenceAnswer.trim() || undefined,
-        rubric: rubric.trim() || undefined,
-      })
-      setTitle('')
-      setCourse('')
-      setDescription('')
-      setDueAt('')
-      setReferenceAnswer('')
-      setRubric('')
-      setShowCreate(false)
-      setRefreshKey((k) => k + 1)
-    } catch {
-      setError('发布失败，请重试')
-    } finally {
-      setPublishing(false)
-    }
-  }
+  const statusCounts = useMemo(() => {
+    return items.length
+  }, [items])
+
+  const courseOptions = useMemo(
+    () => Array.from(new Set(items.map((item) => item.course))).filter(Boolean),
+    [items],
+  )
 
   const handleClose = async (id: string) => {
-    if (!confirm('确定要关闭该作业吗？关闭后学生将无法提交。')) return
-    await closeAssignment(id)
-    setRefreshKey((k) => k + 1)
+    const confirmed = confirm('确定关闭该作业吗？关闭后学生将无法继续提交。')
+    if (!confirmed) return
+
+    setClosingId(id)
+    setPageError('')
+    try {
+      await closeAssignment(id)
+      setRefreshKey((key) => key + 1)
+    } catch (error: unknown) {
+      setPageError(getErrorMessage(error, '关闭作业失败，请稍后重试'))
+    } finally {
+      setClosingId('')
+    }
   }
 
   return (
-    <div className="mx-auto max-w-5xl">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold text-slate-800">📋 作业管理</h1>
-          <p className="mt-1 text-sm text-slate-500">发布和管理课程作业</p>
+    <div className="mx-auto flex max-w-6xl flex-col gap-5">
+      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold text-slate-950">作业管理</h1>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+              查看已发布作业、跟踪提交进度，并快速进入批改与查重流程。
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setRefreshKey((key) => key + 1)}
+              className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:border-slate-300 hover:bg-slate-50"
+            >
+              刷新
+            </button>
+            <Link
+              to="/teacher/assignments/create"
+              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold !text-white shadow-sm transition-colors hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+            >
+              发布作业
+            </Link>
+          </div>
         </div>
-        <button
-          onClick={() => setShowCreate(!showCreate)}
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
-        >
-          {showCreate ? '取消' : '+ 发布作业'}
-        </button>
-      </div>
+      </section>
 
-      {/* 发布表单 */}
-      {showCreate && (
-        <form
-          onSubmit={handlePublish}
-          className="mb-6 rounded-lg border border-blue-200 bg-blue-50/30 p-4"
-        >
-          {error && (
-            <div className="mb-3 rounded bg-red-100 px-3 py-1.5 text-sm text-red-600">
-              {error}
-            </div>
-          )}
-
-          <div className="mb-3 flex gap-3">
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="作业标题 *"
-              className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
-            />
-            <input
-              type="text"
-              value={course}
-              onChange={(e) => setCourse(e.target.value)}
-              placeholder="所属课程 *"
-              className="w-44 rounded-lg border border-slate-300 px-3 py-2 text-sm transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
-            />
-            <input
-              type="datetime-local"
-              value={dueAt}
-              onChange={(e) => setDueAt(e.target.value)}
-              className="w-56 rounded-lg border border-slate-300 px-3 py-2 text-sm transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
-            />
+      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex rounded-lg bg-slate-100 p-1">
+            {statusOptions.map((option) => (
+              <button
+                key={option.label}
+                type="button"
+                onClick={() => setFilterStatus(option.value)}
+                className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                  filterStatus === option.value
+                    ? 'bg-white text-slate-950 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
           </div>
 
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="作业要求说明 *"
-            rows={3}
-            className="mb-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
-          />
+          <select
+            value={filterCourse}
+            onChange={(event) => setFilterCourse(event.target.value)}
+            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 transition-colors focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-100 lg:w-56"
+          >
+            <option value="">全部课程</option>
+            {courseOptions.map((courseName) => (
+              <option key={courseName} value={courseName}>
+                {courseName}
+              </option>
+            ))}
+          </select>
+        </div>
 
-          <div className="mb-3 flex gap-3">
-            <textarea
-              value={referenceAnswer}
-              onChange={(e) => setReferenceAnswer(e.target.value)}
-              placeholder="参考答案（可选）"
-              rows={2}
-              className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
-            />
-            <textarea
-              value={rubric}
-              onChange={(e) => setRubric(e.target.value)}
-              placeholder="评分标准（可选）"
-              rows={2}
-              className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
-            />
+        <div className="mt-4 border-t border-slate-100 pt-4 text-sm text-slate-500">
+          当前共 {statusCounts} 份作业
+        </div>
+
+        {pageError && (
+          <div className="mt-4 flex flex-col gap-3 rounded-lg border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700 sm:flex-row sm:items-center sm:justify-between">
+            <span>{pageError}</span>
+            <button
+              type="button"
+              onClick={() => setRefreshKey((key) => key + 1)}
+              className="rounded-md bg-white px-3 py-1.5 font-medium text-red-700 transition-colors hover:bg-red-100"
+            >
+              重试
+            </button>
           </div>
+        )}
+      </section>
 
-          <button
-            type="submit"
-            disabled={publishing}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
-          >
-            {publishing ? '发布中...' : '发布作业'}
-          </button>
-        </form>
-      )}
-
-      {/* 筛选 */}
-      <div className="mb-4 flex flex-wrap gap-2">
-        <select
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
-        >
-          <option value="">全部状态</option>
-          <option value="open">进行中</option>
-          <option value="closed">已关闭</option>
-        </select>
-        {[...new Set(items.map((i) => i.course))].map((c) => (
-          <button
-            key={c}
-            onClick={() => setFilterCourse(filterCourse === c ? '' : c)}
-            className={`rounded-lg border px-3 py-1.5 text-sm transition-colors ${
-              filterCourse === c
-                ? 'border-blue-300 bg-blue-50 text-blue-700'
-                : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-            }`}
-          >
-            {c}
-          </button>
-        ))}
-      </div>
-
-      {/* 列表 */}
       {loading ? (
         <div className="space-y-3">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="animate-pulse rounded-lg border border-slate-200 bg-white p-4">
-              <div className="mb-2 h-5 w-3/4 rounded bg-slate-200" />
-              <div className="h-4 w-1/2 rounded bg-slate-100" />
+          {[1, 2, 3].map((item) => (
+            <div
+              key={item}
+              className="animate-pulse rounded-xl border border-slate-200 bg-white p-5"
+            >
+              <div className="mb-4 h-5 w-2/3 rounded bg-slate-200" />
+              <div className="mb-3 h-4 w-1/2 rounded bg-slate-100" />
+              <div className="h-10 rounded bg-slate-100" />
             </div>
           ))}
         </div>
       ) : items.length === 0 ? (
-        <div className="rounded-lg border border-slate-200 bg-white px-6 py-12 text-center">
-          <p className="text-4xl">📭</p>
-          <p className="mt-2 text-sm text-slate-500">暂无已发布作业</p>
+        <div className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center">
+          <h2 className="text-base font-semibold text-slate-800">暂无匹配作业</h2>
+          <p className="mt-2 text-sm text-slate-500">
+            可以调整筛选条件，或发布一份新的课程作业。
+          </p>
+          <Link
+            to="/teacher/assignments/create"
+            className="mt-5 inline-flex rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold !text-white shadow-sm transition-colors hover:bg-blue-700"
+          >
+            发布作业
+          </Link>
         </div>
       ) : (
         <div className="space-y-3">
-          {items.map((item) => (
-            <div
-              key={item.id}
-              className="rounded-lg border border-slate-200 bg-white p-4 transition-colors hover:border-slate-300"
-            >
-              <div className="flex items-start justify-between gap-4">
-                <Link
-                  to={`/teacher/assignments/${item.id}`}
-                  className="min-w-0 flex-1"
-                >
-                  <h3 className="font-medium text-slate-800 hover:text-blue-600">
-                    {item.title}
-                  </h3>
-                  <p className="mt-1 text-sm text-slate-500">
-                    {item.course} · 截止：{new Date(item.due_at).toLocaleString('zh-CN')}
-                  </p>
-                  <p className="mt-0.5 text-xs text-slate-400">
-                    已提交 {item.submission_count}/{item.total_students}
-                  </p>
-                </Link>
-                <div className="flex shrink-0 items-center gap-2">
-                  <span
-                    className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                      item.status === 'open'
-                        ? 'bg-blue-50 text-blue-600'
-                        : 'bg-slate-100 text-slate-500'
-                    }`}
-                  >
-                    {item.status === 'open' ? '进行中' : '已关闭'}
-                  </span>
-                  {item.status === 'open' && (
-                    <button
-                      onClick={() => handleClose(item.id)}
-                      className="rounded border border-slate-200 px-2 py-1 text-xs text-slate-500 transition-colors hover:bg-red-50 hover:text-red-600"
+          {items.map((item) => {
+            const progress =
+              item.total_students > 0
+                ? Math.round((item.submission_count / item.total_students) * 100)
+                : 0
+
+            return (
+              <article
+                key={item.id}
+                className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md"
+              >
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-3 flex flex-wrap items-center gap-2">
+                      <span className="rounded-md bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
+                        {item.course}
+                      </span>
+                      <span
+                        className={`rounded-md px-2.5 py-1 text-xs font-medium ${
+                          item.status === 'open'
+                            ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100'
+                            : 'bg-slate-100 text-slate-500 ring-1 ring-slate-200'
+                        }`}
+                      >
+                        {item.status === 'open' ? '进行中' : '已关闭'}
+                      </span>
+                    </div>
+
+                    <Link
+                      to={`/teacher/assignments/${item.id}`}
+                      className="block text-lg font-semibold text-slate-950 transition-colors hover:text-blue-700"
                     >
-                      关闭
-                    </button>
-                  )}
+                      {item.title}
+                    </Link>
+
+                    <div className="mt-3 grid gap-2 text-sm text-slate-500 sm:grid-cols-2">
+                      <p>截止时间：{formatDateTime(item.due_at)}</p>
+                      <p>
+                        提交进度：{item.submission_count}/{item.total_students}
+                      </p>
+                    </div>
+
+                    <div className="mt-4 max-w-xl">
+                      <div className="mb-1.5 flex items-center justify-between text-xs text-slate-500">
+                        <span>提交完成率</span>
+                        <span>{progress}%</span>
+                      </div>
+                      <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                        <div
+                          className="h-full rounded-full bg-blue-600 transition-all"
+                          style={{ width: `${progress}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex shrink-0 flex-wrap gap-2 lg:justify-end">
+                    <Link
+                      to={`/teacher/assignments/${item.id}`}
+                      className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50"
+                    >
+                      查看详情
+                    </Link>
+                    <Link
+                      to={`/teacher/grading?assignment_id=${item.id}`}
+                      className="rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-100"
+                    >
+                      AI 批改
+                    </Link>
+                    {item.status === 'open' && (
+                      <button
+                        type="button"
+                        onClick={() => handleClose(item.id)}
+                        disabled={closingId === item.id}
+                        className="rounded-lg border border-red-100 px-3 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {closingId === item.id ? '关闭中...' : '关闭作业'}
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </div>
-          ))}
+              </article>
+            )
+          })}
         </div>
       )}
     </div>

@@ -18,6 +18,7 @@ export async function publishAssignment(formData: {
   due_at: string
   reference_answer?: string
   rubric?: string
+  attachment?: File
 }): Promise<ApiResponse<TeacherAssignmentDetail>> {
   const fd = new FormData()
   fd.append('title', formData.title)
@@ -26,6 +27,7 @@ export async function publishAssignment(formData: {
   fd.append('due_at', formData.due_at)
   if (formData.reference_answer) fd.append('reference_answer', formData.reference_answer)
   if (formData.rubric) fd.append('rubric', formData.rubric)
+  if (formData.attachment) fd.append('attachment', formData.attachment)
   const res = await request.post('/teacher/assignments', fd, {
     headers: { 'Content-Type': 'multipart/form-data' },
   })
