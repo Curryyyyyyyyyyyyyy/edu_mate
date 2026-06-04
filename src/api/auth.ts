@@ -22,7 +22,6 @@ export async function registerStudent(payload: {
 export async function registerTeacher(payload: {
   username: string
   name: string
-  courses: string[]
   password: string
 }): Promise<ApiResponse<RegisterData>> {
   const res = await request.post('/auth/register/teacher', payload)

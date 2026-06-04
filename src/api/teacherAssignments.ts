@@ -11,46 +11,25 @@ import type {
 
 // ── 作业管理 ───────────────────────────────────────────
 
-export async function publishAssignment(formData: {
-  title: string
-  course: string
-  description: string
-  due_at: string
-  reference_answer?: string
-  rubric?: string
-  attachment?: File
-}): Promise<ApiResponse<TeacherAssignmentDetail>> {
-  const fd = new FormData()
-  fd.append('title', formData.title)
-  fd.append('course', formData.course)
-  fd.append('description', formData.description)
-  fd.append('due_at', formData.due_at)
-  if (formData.reference_answer) fd.append('reference_answer', formData.reference_answer)
-  if (formData.rubric) fd.append('rubric', formData.rubric)
-  if (formData.attachment) fd.append('attachment', formData.attachment)
-  const res = await request.post('/teacher/assignments', fd, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  })
-  return res as unknown as ApiResponse<TeacherAssignmentDetail>
-}
-
-export async function getTeacherAssignments(params?: {
-  course?: string
-  status?: string
-}): Promise<ApiResponse<TeacherAssignmentListData>> {
-  const res = await request.get('/teacher/assignments', { params })
+export async function getTeacherAssignments(
+  courseId: string,
+  params?: { section_id?: string; status?: string },
+): Promise<ApiResponse<TeacherAssignmentListData>> {
+  const res = await request.get(`/teacher/courses/${courseId}/assignments`, { params })
   return res as unknown as ApiResponse<TeacherAssignmentListData>
 }
 
 export async function getTeacherAssignmentDetail(
-  id: string,
+  courseId: string,
+  assignmentId: string,
 ): Promise<ApiResponse<TeacherAssignmentDetail>> {
-  const res = await request.get(`/teacher/assignments/${id}`)
+  const res = await request.get(`/teacher/courses/${courseId}/assignments/${assignmentId}`)
   return res as unknown as ApiResponse<TeacherAssignmentDetail>
 }
 
 export async function updateAssignment(
-  id: string,
+  courseId: string,
+  assignmentId: string,
   updates: { description?: string; due_at?: string },
 ): Promise<
   ApiResponse<{
@@ -60,7 +39,7 @@ export async function updateAssignment(
     updated_at: string
   }>
 > {
-  const res = await request.patch(`/teacher/assignments/${id}`, updates)
+  const res = await request.patch(`/teacher/courses/${courseId}/assignments/${assignmentId}`, updates)
   return res as unknown as ApiResponse<{
     id: string
     description: string
@@ -70,26 +49,29 @@ export async function updateAssignment(
 }
 
 export async function closeAssignment(
-  id: string,
+  courseId: string,
+  assignmentId: string,
 ): Promise<ApiResponse<{ id: string; status: string }>> {
-  const res = await request.post(`/teacher/assignments/${id}/close`)
+  const res = await request.post(`/teacher/courses/${courseId}/assignments/${assignmentId}/close`)
   return res as unknown as ApiResponse<{ id: string; status: string }>
 }
 
 export async function getSubmissions(
+  courseId: string,
   assignmentId: string,
 ): Promise<ApiResponse<TeacherSubmissionListData>> {
-  const res = await request.get(`/teacher/assignments/${assignmentId}/submissions`)
+  const res = await request.get(`/teacher/courses/${courseId}/assignments/${assignmentId}/submissions`)
   return res as unknown as ApiResponse<TeacherSubmissionListData>
 }
 
 // ── AI 批改 ───────────────────────────────────────────
 
 export async function gradeSubmissions(
+  courseId: string,
   assignmentId: string,
   submissionIds: string[],
 ): Promise<ApiResponse<GradeResultData>> {
-  const res = await request.post(`/teacher/assignments/${assignmentId}/grade`, {
+  const res = await request.post(`/teacher/courses/${courseId}/assignments/${assignmentId}/grade`, {
     submission_ids: submissionIds,
     need_teacher_confirm: true,
   })
@@ -97,6 +79,8 @@ export async function gradeSubmissions(
 }
 
 export async function confirmGrade(
+  courseId: string,
+  assignmentId: string,
   submissionId: string,
   finalScore: number,
   confirmed: boolean,
@@ -108,11 +92,14 @@ export async function confirmGrade(
     confirmed: boolean
   }>
 > {
-  const res = await request.patch(`/teacher/submissions/${submissionId}/grade`, {
-    final_score: finalScore,
-    confirmed,
-    teacher_comment: teacherComment,
-  })
+  const res = await request.patch(
+    `/teacher/courses/${courseId}/assignments/${assignmentId}/submissions/${submissionId}`,
+    {
+      final_score: finalScore,
+      confirmed,
+      teacher_comment: teacherComment,
+    },
+  )
   return res as unknown as ApiResponse<{
     submission_id: string
     final_score: number
@@ -121,21 +108,23 @@ export async function confirmGrade(
 }
 
 export async function getGradingReport(
+  courseId: string,
   assignmentId: string,
 ): Promise<ApiResponse<GradingReportData>> {
-  const res = await request.get(`/teacher/assignments/${assignmentId}/grading-report`)
+  const res = await request.get(`/teacher/courses/${courseId}/assignments/${assignmentId}/grading-report`)
   return res as unknown as ApiResponse<GradingReportData>
 }
 
 // ── 查重与比对 ────────────────────────────────────────
 
 export async function analyzeSubmissions(
+  courseId: string,
   assignmentId: string,
   submissionIds: string[],
   threshold?: number,
   dimensions?: string[],
 ): Promise<ApiResponse<AnalyzeReportData>> {
-  const res = await request.post(`/teacher/assignments/${assignmentId}/analyze`, {
+  const res = await request.post(`/teacher/courses/${courseId}/assignments/${assignmentId}/analyze`, {
     submission_ids: submissionIds,
     similarity_threshold: threshold,
     compare_dimensions: dimensions,
@@ -144,8 +133,9 @@ export async function analyzeSubmissions(
 }
 
 export async function getAnalyzeReport(
+  courseId: string,
   assignmentId: string,
 ): Promise<ApiResponse<AnalyzeReportData>> {
-  const res = await request.get(`/teacher/assignments/${assignmentId}/analyze-report`)
+  const res = await request.get(`/teacher/courses/${courseId}/assignments/${assignmentId}/analyze-report`)
   return res as unknown as ApiResponse<AnalyzeReportData>
 }

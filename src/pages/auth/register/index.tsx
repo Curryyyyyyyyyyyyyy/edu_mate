@@ -11,7 +11,6 @@ const QUICK_STUDENT = {
 const QUICK_TEACHER = {
   username: 'T20240001',
   name: '李老师',
-  courses: '高等数学，线性代数',
   password: '123456',
 }
 
@@ -33,7 +32,6 @@ export default function RegisterPage() {
   // 教师字段
   const [tUsername, setTUsername] = useState('')
   const [tName, setTName] = useState('')
-  const [tCourses, setTCourses] = useState('')
   const [tPassword, setTPassword] = useState('')
 
   const handleSubmit = async (e: FormEvent) => {
@@ -61,7 +59,7 @@ export default function RegisterPage() {
           // 注册成功后自动登录
           const loginRes = await loginApi(sUsername, sPassword)
           login(loginRes.data.token, loginRes.data.user)
-          navigate('/student/chat', { replace: true })
+          navigate('/student', { replace: true })
         }
       } catch (err: unknown) {
         setError(
@@ -72,7 +70,7 @@ export default function RegisterPage() {
         setLoading(false)
       }
     } else {
-      if (!tUsername.trim() || !tName.trim() || !tCourses.trim() || !tPassword.trim()) {
+      if (!tUsername.trim() || !tName.trim() || !tPassword.trim()) {
         setError('请填写所有必填字段')
         return
       }
@@ -85,13 +83,12 @@ export default function RegisterPage() {
         const res = await registerTeacher({
           username: tUsername,
           name: tName,
-          courses: tCourses.split(/[,，]/).map((c) => c.trim()).filter(Boolean),
           password: tPassword,
         })
         if (res.success) {
           const loginRes = await loginApi(tUsername, tPassword)
           login(loginRes.data.token, loginRes.data.user)
-          navigate('/teacher/assignments', { replace: true })
+          navigate('/teacher', { replace: true })
         }
       } catch (err: unknown) {
         setError(
@@ -113,7 +110,6 @@ export default function RegisterPage() {
     } else {
       setTUsername(QUICK_TEACHER.username)
       setTName(QUICK_TEACHER.name)
-      setTCourses(QUICK_TEACHER.courses)
       setTPassword(QUICK_TEACHER.password)
     }
   }
@@ -218,17 +214,6 @@ export default function RegisterPage() {
                   onChange={(e) => setTName(e.target.value)}
                   className="mb-4 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
                   placeholder="请输入真实姓名"
-                />
-
-                <label className="mb-1.5 block text-sm font-medium text-slate-700">
-                  所教课程（用逗号分隔）
-                </label>
-                <input
-                  type="text"
-                  value={tCourses}
-                  onChange={(e) => setTCourses(e.target.value)}
-                  className="mb-4 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                  placeholder="例如：高等数学，线性代数"
                 />
 
                 <label className="mb-1.5 block text-sm font-medium text-slate-700">

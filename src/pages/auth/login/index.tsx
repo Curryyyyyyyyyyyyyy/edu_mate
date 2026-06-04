@@ -26,7 +26,7 @@ export default function LoginPage() {
       const res = await login(username, password)
       if (res.success) {
         authLogin(res.data.token, res.data.user)
-        navigate(res.data.user.role === 'teacher' ? '/teacher/assignments' : '/student/chat', { replace: true })
+        navigate(res.data.user.role === 'teacher' ? '/teacher' : '/student', { replace: true })
       }
     } catch (err: unknown) {
       const detail =

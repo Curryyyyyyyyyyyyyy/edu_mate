@@ -1,31 +1,30 @@
 /**
  * Mock 数据层 —— 后端不可用时前端使用。
+ * 通过 VITE_USE_MOCK=true 启用，在 request.ts 拦截器中接入。
  * 所有返回结构与 API 文档完全一致。
  */
 import type {
   ApiResponse,
-  ChatData,
-  ChatMessage,
-  GradingReportData,
-  LearningPlanData,
-  LearningPlanListData,
   LoginData,
-  MySubmissionData,
   RegisterData,
-  SessionMessagesData,
-  StudentAssignmentDetail,
-  StudentAssignmentListData,
-  SummaryDetail,
-  SummaryListData,
-  SubmissionData,
-  TeacherAssignmentDetail,
-  TeacherAssignmentListData,
-  TeacherSubmissionListData,
-  GradeResultData,
-  AnalyzeReportData,
-  SuspiciousPair,
-  ComparisonDetail,
   UserInfo,
+  StudentCourseItem,
+  StudentCourseDetail,
+  JoinCourseData,
+  SectionItem,
+  ChatData,
+  ChatSessionItem,
+  SessionMessagesData,
+  ChatMessage,
+  StudentAssignmentItem,
+  StudentAssignmentDetail,
+  SubmissionData,
+  MySubmissionData,
+  SummaryListItem,
+  SummaryDetail,
+  LearningPlanData,
+  LearningPlanListItem,
+  PlanProgress,
 } from '../types/api'
 
 // ═══════════════════════════════════════════════════════════════
@@ -33,9 +32,7 @@ import type {
 // ═══════════════════════════════════════════════════════════════
 
 const delay = (ms = 300) => new Promise((r) => setTimeout(r, ms))
-
 let counter = 100
-
 function uid(prefix: string): string {
   return `${prefix}_${++counter}_${Date.now()}`
 }
@@ -44,20 +41,65 @@ function uid(prefix: string): string {
 // 预置用户
 // ═══════════════════════════════════════════════════════════════
 
-export const MOCK_STUDENT: UserInfo = {
+const STUDENT: UserInfo = {
   id: 'user_student_01',
   username: '20240101',
   name: '张三',
   role: 'student',
-  extra: { class_name: '计算机 2401 班' },
+  class_name: '计算机 2401 班',
+  profile: { interests: ['后端开发', '算法'], career_direction: 'backend', bio: '' },
 }
 
-export const MOCK_TEACHER: UserInfo = {
+const TEACHER: UserInfo = {
   id: 'user_teacher_01',
   username: 'T20240001',
   name: '李老师',
   role: 'teacher',
-  extra: { courses: ['高等数学', '线性代数'] },
+}
+
+const MOCK_TOKEN = 'mock_jwt_token_xxx'
+
+// ═══════════════════════════════════════════════════════════════
+// 预置课程
+// ═══════════════════════════════════════════════════════════════
+
+const COURSES: Record<string, StudentCourseDetail> = {
+  course_001: {
+    id: 'course_001',
+    name: '操作系统',
+    description: '本课程介绍操作系统的核心原理，包括进程管理、内存管理和文件系统。',
+    teacher_name: '李老师',
+    semester: '2026春季',
+    status: 'active',
+    section_count: 3,
+    completed_sections: 1,
+    total_score: 87.5,
+    joined_at: '2026-06-01T10:00:00+08:00',
+  },
+  course_002: {
+    id: 'course_002',
+    name: '数据结构与算法',
+    description: '学习常见数据结构和经典算法，培养计算思维。',
+    teacher_name: '王老师',
+    semester: '2026春季',
+    status: 'active',
+    section_count: 5,
+    completed_sections: 2,
+    total_score: 92,
+    joined_at: '2026-06-02T10:00:00+08:00',
+  },
+  course_003: {
+    id: 'course_003',
+    name: '计算机网络',
+    description: '介绍计算机网络体系结构和核心协议。',
+    teacher_name: '李老师',
+    semester: '2025秋季',
+    status: 'archived',
+    section_count: 8,
+    completed_sections: 8,
+    total_score: 85,
+    joined_at: '2025-09-01T10:00:00+08:00',
+  },
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -65,870 +107,804 @@ export const MOCK_TEACHER: UserInfo = {
 // ═══════════════════════════════════════════════════════════════
 
 const store = {
-  token: 'mock_jwt_token_xxx',
   currentUser: null as UserInfo | null,
-  sessions: new Map<string, ChatMessage[]>(),
-  assignments: [
-    {
-      id: 'assignment_001',
-      teacher_id: MOCK_TEACHER.id,
-      title: '操作系统进程管理作业',
-      course: '操作系统',
-      description:
-        '请结合课堂内容，分析进程与线程的区别及调度机制，不少于 800 字。',
-      reference_answer:
-        '进程是资源分配的基本单位，拥有独立的地址空间；线程是CPU调度的基本单位，共享进程资源。调度算法包括FCFS、SJF、优先级调度、时间片轮转等。',
-      rubric:
-        '满分 100 分，概念解释 30 分，过程分析 40 分，结论 30 分。',
-      attachment_url: null as string | null,
-      due_at: '2026-06-20T23:59:00+08:00',
-      status: 'open' as const,
-      created_at: '2026-06-01T10:00:00+08:00',
-      updated_at: '2026-06-01T10:00:00+08:00',
-    },
-    {
-      id: 'assignment_002',
-      teacher_id: MOCK_TEACHER.id,
-      title: '高等数学第三章作业',
-      course: '高等数学',
-      description:
-        '完成第三章课后习题 1-10 题，要求写出详细解题步骤。',
-      reference_answer: '1. 解：... 2. 解：...',
-      rubric: '满分 100 分，每题 10 分，步骤完整得满分。',
-      attachment_url: null as string | null,
-      due_at: '2026-06-15T23:59:00+08:00',
-      status: 'open' as const,
-      created_at: '2026-06-01T10:00:00+08:00',
-      updated_at: '2026-06-01T10:00:00+08:00',
-    },
-    {
-      id: 'assignment_003',
-      teacher_id: MOCK_TEACHER.id,
-      title: '线性代数矩阵运算作业',
-      course: '线性代数',
-      description: '完成矩阵运算相关习题，包含逆矩阵和特征值计算。',
-      reference_answer: '',
-      rubric: '满分 100 分。',
-      attachment_url: null as string | null,
-      due_at: '2026-06-08T23:59:00+08:00',
-      status: 'closed' as const,
-      created_at: '2026-05-20T10:00:00+08:00',
-      updated_at: '2026-06-08T23:59:00+08:00',
-    },
+  token: MOCK_TOKEN,
+
+  sections: {
+    course_001: [
+      { id: 'section_001', title: '第一章：进程管理', description: '介绍进程的概念、状态转换和调度算法。', order: 1, material_url: null, assignment_count: 2, submitted_count: 1, section_score: 88 },
+      { id: 'section_002', title: '第二章：内存管理', description: '介绍内存分配、分页、分段和虚拟内存。', order: 2, material_url: null, assignment_count: 1, submitted_count: 0, section_score: null },
+      { id: 'section_003', title: '第三章：文件系统', description: '介绍文件系统结构、目录和存储管理。', order: 3, material_url: null, assignment_count: 1, submitted_count: 0, section_score: null },
+    ],
+    course_002: [
+      { id: 'section_004', title: '第一章：线性表', description: '顺序表、链表及其操作。', order: 1, material_url: null, assignment_count: 2, submitted_count: 2, section_score: 95 },
+      { id: 'section_005', title: '第二章：树与二叉树', description: '树的定义、遍历和应用。', order: 2, material_url: null, assignment_count: 1, submitted_count: 0, section_score: null },
+    ],
+  } as Record<string, SectionItem[]>,
+
+  assignments: {
+    course_001: [
+      { id: 'asg_001', course_id: 'course_001', section_id: 'section_001', section_title: '第一章：进程管理', title: '进程管理练习', description: '完成关于进程状态转换的分析题，不少于 500 字。', due_at: '2026-06-15T23:59:00+08:00', full_score: 100, status: 'open' as const, attachment_url: null },
+      { id: 'asg_002', course_id: 'course_001', section_id: 'section_001', section_title: '第一章：进程管理', title: '调度算法分析', description: '对比FCFS、SJF和时间片轮转算法，不少于 300 字。', due_at: '2026-06-20T23:59:00+08:00', full_score: 100, status: 'open' as const, attachment_url: null },
+      { id: 'asg_003', course_id: 'course_001', section_id: 'section_002', section_title: '第二章：内存管理', title: '内存分页练习', description: '完成分页地址转换练习，5道计算题。', due_at: '2026-06-10T23:59:00+08:00', full_score: 100, status: 'closed' as const, attachment_url: null },
+    ],
+    course_002: [
+      { id: 'asg_004', course_id: 'course_002', section_id: 'section_004', section_title: '第一章：线性表', title: '链表反转练习', description: '实现单链表反转并分析时间复杂度。', due_at: '2026-06-18T23:59:00+08:00', full_score: 100, status: 'open' as const, attachment_url: null },
+    ],
+  } as Record<string, Array<{
+    id: string; course_id: string; section_id: string; section_title: string;
+    title: string; description: string; due_at: string; full_score: number;
+    status: 'open' | 'closed'; attachment_url: string | null;
+  }>>,
+
+  submissions: {} as Record<string, {
+    id: string; assignment_id: string; submit_type: 'text'; content: string;
+    submitted_at: string; score: number | null; ai_score: number | null;
+    comments: string | null; deductions: { point: string; minus: number }[];
+    suggestions: string[]; teacher_comment: string | null; graded_at: string | null;
+  }>,
+
+  chatSessions: {} as Record<string, {
+    id: string; course_id: string; section_id?: string; section_title?: string;
+    last_question: string; message_count: number;
+    created_at: string; updated_at: string;
+    messages: ChatMessage[];
+  }>,
+
+  summaries: {} as Record<string, SummaryDetail[]>,
+
+  learningPlans: {} as Record<string, LearningPlanData[]>,
+  planProgress: {} as Record<string, PlanProgress>,
+}
+
+// 初始化一些测试数据
+store.submissions['asg_001'] = {
+  id: 'sub_001', assignment_id: 'asg_001', submit_type: 'text',
+  content: '进程是程序执行的实体...',
+  submitted_at: '2026-06-08T14:30:00+08:00',
+  score: 88, ai_score: 86, comments: '整体思路正确，但关键概念解释不够完整。',
+  deductions: [{ point: '进程状态转换条件说明不完整', minus: 6 }],
+  suggestions: ['补充阻塞态与就绪态的转换条件'],
+  teacher_comment: '补充了一些关键点，酌情加分。',
+  graded_at: '2026-06-09T10:00:00+08:00',
+}
+
+store.summaries['course_001'] = [{
+  id: 'summary_001', course_id: 'course_001', section_id: 'section_001',
+  section_title: '第一章：进程管理', title: '进程管理课件总结', rag_used: true,
+  references: [{ section_id: 'section_001', section_title: '第一章：进程管理', file_name: 'section_001_slides.pdf', excerpt: '进程是操作系统进行资源分配和调度的基本单位...' }],
+  summary: {
+    overview: '本章主要介绍进程的定义、状态转换和调度机制。',
+    key_points: ['进程是资源分配的基本单位', '进程状态包括就绪、运行和阻塞', '调度算法影响系统响应时间和吞吐量'],
+    difficult_points: ['进程与线程的区别', '阻塞和就绪状态的转换条件'],
+    review_tips: ['结合状态转换图记忆进程生命周期', '对比 FCFS、SJF、时间片轮转等调度算法'],
+  },
+  created_at: '2026-06-04T20:00:00+08:00',
+}]
+
+store.learningPlans['course_001'] = [{
+  id: 'plan_001', course_id: 'course_001', course_name: '操作系统',
+  career_direction: 'backend', version: 1, parent_plan_id: null,
+  data_sources: ['scores', 'quizzes', 'profile', 'chat_sessions', 'questions'],
+  analysis: {
+    current_level: '基础概念掌握一般，进程调度和内存分页部分偏弱',
+    weak_points: ['进程状态转换', '调度算法对比'],
+    career_relevance: '进程调度和并发模型是后端开发的重要基础',
+    priority: '先补齐进程状态转换，再横向对比调度算法',
+  },
+  rag_references: [{ section_id: 'section_001', section_title: '第一章：进程管理', file_name: 'section_001_slides.pdf', excerpt: '进程的五种状态及转换条件如下...' }],
+  plan: [
+    { day: 1, task: '精读课件「进程状态转换图」，重点理解阻塞态与挂起态的区别', duration_minutes: 60, section_id: 'section_001', section_title: '第一章：进程管理' },
+    { day: 2, task: '整理 FCFS、SJF、时间片轮转三种算法差异，结合后端开发场景理解', duration_minutes: 60, section_id: 'section_001', section_title: '第一章：进程管理' },
+    { day: 3, task: '完成进程调度相关习题5道，整理错题笔记', duration_minutes: 45, section_id: 'section_001', section_title: '第一章：进程管理' },
+    { day: 4, task: '复习内存分页与分段，对比二者的地址转换过程', duration_minutes: 60, section_id: 'section_002', section_title: '第二章：内存管理' },
+    { day: 5, task: '综合练习：完成一套操作系统模拟测试题', duration_minutes: 60, section_id: undefined, section_title: undefined },
   ],
-  submissions: [
-    {
-      id: 'submission_001',
-      assignment_id: 'assignment_001',
-      student_id: MOCK_STUDENT.id,
-      student_name: MOCK_STUDENT.name,
-      submit_type: 'text' as const,
-      content: '进程是程序执行的实体...',
-      file_path: null as string | null,
-      submitted_at: '2026-06-08T14:30:00+08:00',
-      status: 'submitted' as const,
-    },
+  created_at: '2026-06-10T20:00:00+08:00',
+}]
+
+store.planProgress['plan_001'] = {
+  plan_id: 'plan_001', version: 1, total_days: 5, completed_days: 2, completion_rate: 0.40,
+  tasks: [
+    { day: 1, task: '精读课件「进程状态转换图」', duration_minutes: 60, section_id: 'section_001', section_title: '第一章：进程管理', completed: true, feedback: '已掌握，进程状态转换比较清楚了', completed_at: '2026-06-11T21:00:00+08:00' },
+    { day: 2, task: '整理 FCFS、SJF、时间片轮转三种算法差异', duration_minutes: 60, section_id: 'section_001', section_title: '第一章：进程管理', completed: true, feedback: '算法对比还需要再复习', completed_at: '2026-06-12T20:00:00+08:00' },
+    { day: 3, task: '完成进程调度相关习题5道', duration_minutes: 45, section_id: 'section_001', section_title: '第一章：进程管理', completed: false, feedback: null, completed_at: null },
+    { day: 4, task: '复习内存分页与分段', duration_minutes: 60, section_id: 'section_002', section_title: '第二章：内存管理', completed: false, feedback: null, completed_at: null },
+    { day: 5, task: '综合练习：完成一套操作系统模拟测试题', duration_minutes: 60, section_id: undefined, section_title: undefined, completed: false, feedback: null, completed_at: null },
   ],
-  summaries: [
-    {
-      id: 'summary_001',
-      user_id: MOCK_STUDENT.id,
-      title: '操作系统进程管理',
-      course: '操作系统',
-      source_text:
-        '进程是程序的一次执行过程，包含程序段、数据段和进程控制块。进程具有动态性、并发性、独立性和异步性等特征...',
-      summary: {
-        overview:
-          '本部分主要介绍进程的定义、状态转换和调度机制。',
-        key_points: [
-          '进程是资源分配的基本单位',
-          '进程状态通常包括就绪、运行和阻塞',
-          '调度算法影响系统响应时间和吞吐量',
-        ],
-        difficult_points: [
-          '进程与线程的区别',
-          '阻塞和就绪状态的转换条件',
-        ],
-        review_tips: [
-          '结合状态转换图记忆进程生命周期',
-          '对比 FCFS、SJF、时间片轮转等调度算法',
-        ],
-      },
-      created_at: '2026-06-01T20:00:00+08:00',
-    },
-  ],
-  learningPlans: [
-    {
-      id: 'plan_001',
-      student_id: MOCK_STUDENT.id,
-      course: '高等数学',
-      status: 'active' as const,
-      analysis: {
-        current_level: '基础概念掌握一般，应用题偏弱',
-        weak_points: ['复合函数求导', '极值应用题'],
-        priority: '先补齐求导规则，再训练应用题建模',
-      },
-      plan: [
-        {
-          day: 1,
-          task: '复习复合函数求导规则并完成 10 道基础题',
-          duration_minutes: 60,
-        },
-        {
-          day: 2,
-          task: '整理极值应用题常见模型并完成 5 道例题',
-          duration_minutes: 60,
-        },
-        {
-          day: 3,
-          task: '练习综合应用题 8 道，总结解题思路',
-          duration_minutes: 60,
-        },
-      ],
-      created_at: '2026-06-01T20:00:00+08:00',
-    },
-  ],
-  grades: new Map<string, {
-    submission_id: string
-    student_id: string
-    student_name: string
-    ai_score: number
-    comments: string
-    deductions: { point: string; minus: number }[]
-    suggestions: string[]
-    confirmed: boolean
-    final_score?: number
-    teacher_comment?: string
-  }>(),
 }
 
 // ═══════════════════════════════════════════════════════════════
-// Mock API 处理函数
+// Mock API 处理函数导出
 // ═══════════════════════════════════════════════════════════════
 
-export const mockApi = {
-  // ── 认证 ──────────────────────────────────────────────────
+export function mockHandle(method: string, url: string, data?: unknown): Promise<unknown> | null {
+  // 解析路径和参数
+  const urlObj = new URL(url, 'http://localhost')
+  const path = urlObj.pathname
 
-  async login(
-    username: string,
-    password: string,
-  ): Promise<ApiResponse<LoginData>> {
-    await delay()
-    if (username === MOCK_STUDENT.username && password === '123456') {
-      store.currentUser = MOCK_STUDENT
-      return {
-        success: true,
-        data: {
-          token: store.token,
-          expires_in: 86400,
-          user: MOCK_STUDENT,
-        },
-        message: 'ok',
-      }
-    }
-    if (username === MOCK_TEACHER.username && password === '123456') {
-      store.currentUser = MOCK_TEACHER
-      return {
-        success: true,
-        data: {
-          token: store.token,
-          expires_in: 86400,
-          user: MOCK_TEACHER,
-        },
-        message: 'ok',
-      }
-    }
-    throw { response: { status: 401, data: { detail: '用户名或密码错误' } } }
-  },
+  // ── 认证 ──────────────────────────────────────────────
+  if (method === 'POST' && path === '/api/auth/login') {
+    return handleLogin(data as { username: string; password: string })
+  }
+  if (method === 'POST' && path === '/api/auth/register/student') {
+    return handleRegister('student', data)
+  }
+  if (method === 'POST' && path === '/api/auth/register/teacher') {
+    return handleRegister('teacher', data)
+  }
+  if (method === 'GET' && path === '/api/auth/me') {
+    return handleGetMe()
+  }
 
-  async registerStudent(
-    payload: {
-      username: string
-      name: string
-      class_name: string
-      password: string
-    },
-  ): Promise<ApiResponse<RegisterData>> {
-    await delay()
-    const user: RegisterData = {
-      id: uid('user'),
-      username: payload.username,
-      name: payload.name,
-      role: 'student',
-    }
-    return { success: true, data: user, message: 'registered' }
-  },
+  // ── 课程 ──────────────────────────────────────────────
+  if (method === 'GET' && path === '/api/student/courses') {
+    return handleGetCourses()
+  }
+  if (method === 'POST' && path === '/api/student/courses/join') {
+    return handleJoinCourse(data as { code: string })
+  }
+  const courseDetailMatch = path.match(/^\/api\/student\/courses\/([^/]+)$/)
+  if (method === 'GET' && courseDetailMatch) {
+    return handleGetCourseDetail(courseDetailMatch[1])
+  }
 
-  async registerTeacher(payload: {
-    username: string
-    name: string
-    courses: string[]
-    password: string
-  }): Promise<ApiResponse<RegisterData>> {
-    await delay()
-    const user: RegisterData = {
-      id: uid('user'),
-      username: payload.username,
-      name: payload.name,
-      role: 'teacher',
-    }
-    return { success: true, data: user, message: 'registered' }
-  },
+  // ── 小节 ──────────────────────────────────────────────
+  const sectionsMatch = path.match(/^\/api\/student\/courses\/([^/]+)\/sections$/)
+  if (method === 'GET' && sectionsMatch) {
+    return handleGetSections(sectionsMatch[1])
+  }
 
-  async getMe(): Promise<ApiResponse<UserInfo>> {
-    await delay()
-    const user = store.currentUser
-      || JSON.parse(localStorage.getItem('mockUser') || 'null')
-      || MOCK_STUDENT
-    return { success: true, data: user, message: 'ok' }
-  },
+  // ── 聊天 ──────────────────────────────────────────────
+  const chatSessionsMatch = path.match(/^\/api\/student\/courses\/([^/]+)\/chat\/sessions\/([^/]+)\/messages$/)
+  if (method === 'GET' && chatSessionsMatch) {
+    return handleGetSessionMessages(chatSessionsMatch[1], chatSessionsMatch[2])
+  }
+  const chatSessionsListMatch = path.match(/^\/api\/student\/courses\/([^/]+)\/chat\/sessions$/)
+  if (method === 'GET' && chatSessionsListMatch) {
+    return handleGetChatSessions(chatSessionsListMatch[1])
+  }
+  const chatMatch = path.match(/^\/api\/student\/courses\/([^/]+)\/chat$/)
+  if (method === 'POST' && chatMatch) {
+    return handleSendMessage(chatMatch[1], data as { question: string; session_id?: string })
+  }
 
-  // ── 智能问答 ─────────────────────────────────────────────
+  // ── 作业 ──────────────────────────────────────────────
+  const asgSubmitMatch = path.match(/^\/api\/student\/courses\/([^/]+)\/assignments\/([^/]+)\/submit$/)
+  if (method === 'POST' && asgSubmitMatch) {
+    return handleSubmitAssignment(asgSubmitMatch[1], asgSubmitMatch[2], data)
+  }
+  const asgMySubMatch = path.match(/^\/api\/student\/courses\/([^/]+)\/assignments\/([^/]+)\/my-submission$/)
+  if (method === 'GET' && asgMySubMatch) {
+    return handleGetMySubmission(asgMySubMatch[1], asgMySubMatch[2])
+  }
+  const asgDetailMatch = path.match(/^\/api\/student\/courses\/([^/]+)\/assignments\/([^/]+)$/)
+  if (method === 'GET' && asgDetailMatch) {
+    return handleGetAssignmentDetail(asgDetailMatch[1], asgDetailMatch[2])
+  }
+  const asgListMatch = path.match(/^\/api\/student\/courses\/([^/]+)\/assignments$/)
+  if (method === 'GET' && asgListMatch) {
+    return handleGetAssignments(asgListMatch[1])
+  }
 
-  async sendMessage(params: {
-    question: string
-    course?: string
-    session_id?: string
-  }): Promise<ApiResponse<ChatData>> {
-    await delay(800)
-    const sessionId = params.session_id || uid('session')
-    const answer = generateMockAnswer(params.question, params.course)
-    const suggestions = [
-      `可以结合${params.course || '课本'}进一步理解该知识点`,
-      '建议做一些相关练习题加深印象',
-      '如果有疑问可以继续追问',
-    ]
+  // ── 总结 ──────────────────────────────────────────────
+  const sumDetailMatch = path.match(/^\/api\/student\/courses\/([^/]+)\/summaries\/([^/]+)$/)
+  if (method === 'GET' && sumDetailMatch) {
+    return handleGetSummary(sumDetailMatch[1], sumDetailMatch[2])
+  }
+  if (method === 'DELETE' && sumDetailMatch) {
+    return handleDeleteSummary(sumDetailMatch[1], sumDetailMatch[2])
+  }
+  const sumListMatch = path.match(/^\/api\/student\/courses\/([^/]+)\/summaries$/)
+  if (method === 'GET' && sumListMatch) {
+    return handleGetSummaries(sumListMatch[1])
+  }
+  if (method === 'POST' && sumListMatch) {
+    return handleCreateSummary(sumListMatch[1], data)
+  }
 
-    // 存储消息
-    if (!store.sessions.has(sessionId)) {
-      store.sessions.set(sessionId, [])
-    }
-    const msgs = store.sessions.get(sessionId)!
-    msgs.push({
-      id: uid('msg'),
-      role: 'user',
-      content: params.question,
-      created_at: new Date().toISOString(),
-    })
-    msgs.push({
-      id: uid('msg'),
-      role: 'assistant',
-      content: answer,
-      created_at: new Date().toISOString(),
-    })
+  // ── 学习计划 ──────────────────────────────────────────
+  const planProgressMatch = path.match(/^\/api\/student\/courses\/([^/]+)\/learning-plans\/([^/]+)\/progress$/)
+  if (method === 'GET' && planProgressMatch) {
+    return handleGetPlanProgress(planProgressMatch[1], planProgressMatch[2])
+  }
+  if (method === 'POST' && planProgressMatch) {
+    return handleMarkTaskComplete(planProgressMatch[1], planProgressMatch[2], data)
+  }
+  const planStatusMatch = path.match(/^\/api\/student\/courses\/([^/]+)\/learning-plans\/([^/]+)\/status$/)
+  if (method === 'PATCH' && planStatusMatch) {
+    return handleUpdatePlanStatus(planStatusMatch[1], planStatusMatch[2], data)
+  }
+  const planDetailMatch = path.match(/^\/api\/student\/courses\/([^/]+)\/learning-plans\/([^/]+)$/)
+  if (method === 'GET' && planDetailMatch) {
+    return handleGetLearningPlan(planDetailMatch[1], planDetailMatch[2])
+  }
+  const planListMatch = path.match(/^\/api\/student\/courses\/([^/]+)\/learning-plans$/)
+  if (method === 'GET' && planListMatch) {
+    return handleGetLearningPlans(planListMatch[1])
+  }
+  if (method === 'POST' && planListMatch) {
+    return handleCreateLearningPlan(planListMatch[1], data)
+  }
 
-    return {
-      success: true,
-      data: { session_id: sessionId, answer, suggestions },
-      message: 'ok',
-    }
-  },
+  // ── 教师端 ──────────────────────────────────────────────
+  // 课程
+  if (method === 'GET' && path === '/api/teacher/courses') {
+    return handleTeacherGetCourses()
+  }
+  if (method === 'POST' && path === '/api/teacher/courses') {
+    return handleTeacherCreateCourse(data)
+  }
+  const tCourseDetailMatch = path.match(/^\/api\/teacher\/courses\/([^/]+)$/)
+  if (method === 'GET' && tCourseDetailMatch) {
+    return handleTeacherGetCourseDetail(tCourseDetailMatch[1])
+  }
+  // 学生管理
+  const tStudentsMatch = path.match(/^\/api\/teacher\/courses\/([^/]+)\/students$/)
+  if (method === 'GET' && tStudentsMatch) {
+    return handleTeacherGetStudents(tStudentsMatch[1])
+  }
+  if (method === 'POST' && tStudentsMatch) {
+    return handleTeacherAddStudents(tStudentsMatch[1], data)
+  }
+  const tRemoveStudentMatch = path.match(/^\/api\/teacher\/courses\/([^/]+)\/students\/([^/]+)$/)
+  if (method === 'DELETE' && tRemoveStudentMatch) {
+    return handleTeacherRemoveStudent(tRemoveStudentMatch[1], tRemoveStudentMatch[2])
+  }
+  // 小节
+  const tSectionsListMatch = path.match(/^\/api\/teacher\/courses\/([^/]+)\/sections$/)
+  if (method === 'GET' && tSectionsListMatch) {
+    return handleTeacherGetSections(tSectionsListMatch[1])
+  }
+  if (method === 'POST' && tSectionsListMatch) {
+    return handleTeacherCreateSection(tSectionsListMatch[1], data)
+  }
+  if (method === 'DELETE' && path.match(/^\/api\/teacher\/courses\/([^/]+)\/sections\/([^/]+)$/)) {
+    const m = path.match(/^\/api\/teacher\/courses\/([^/]+)\/sections\/([^/]+)$/)!
+    return handleTeacherDeleteSection(m[1], m[2])
+  }
+  // 发布作业（在小节下）
+  const tPublishAsgMatch = path.match(/^\/api\/teacher\/courses\/([^/]+)\/sections\/([^/]+)\/assignments$/)
+  if (method === 'POST' && tPublishAsgMatch) {
+    return handleTeacherPublishAssignment(tPublishAsgMatch[1], tPublishAsgMatch[2], data)
+  }
+  // 作业管理
+  const tAsgListMatch = path.match(/^\/api\/teacher\/courses\/([^/]+)\/assignments$/)
+  if (method === 'GET' && tAsgListMatch) {
+    return handleTeacherGetAssignments(tAsgListMatch[1])
+  }
+  const tAsgDetailMatch = path.match(/^\/api\/teacher\/courses\/([^/]+)\/assignments\/([^/]+)$/)
+  if (method === 'GET' && tAsgDetailMatch) {
+    return handleTeacherGetAssignmentDetail(tAsgDetailMatch[1], tAsgDetailMatch[2])
+  }
+  const tAsgCloseMatch = path.match(/^\/api\/teacher\/courses\/([^/]+)\/assignments\/([^/]+)\/close$/)
+  if (method === 'POST' && tAsgCloseMatch) {
+    return handleTeacherCloseAssignment(tAsgCloseMatch[1], tAsgCloseMatch[2])
+  }
+  // 提交列表
+  const tSubListMatch = path.match(/^\/api\/teacher\/courses\/([^/]+)\/assignments\/([^/]+)\/submissions$/)
+  if (method === 'GET' && tSubListMatch) {
+    return handleTeacherGetSubmissions(tSubListMatch[1], tSubListMatch[2])
+  }
+  // 批改
+  const tGradeMatch = path.match(/^\/api\/teacher\/courses\/([^/]+)\/assignments\/([^/]+)\/grade$/)
+  if (method === 'POST' && tGradeMatch) {
+    return handleTeacherGrade(tGradeMatch[1], tGradeMatch[2], data)
+  }
+  const tConfirmMatch = path.match(/^\/api\/teacher\/courses\/([^/]+)\/assignments\/([^/]+)\/submissions\/([^/]+)$/)
+  if (method === 'PATCH' && tConfirmMatch) {
+    return handleTeacherConfirmGrade(tConfirmMatch[1], tConfirmMatch[2], tConfirmMatch[3], data)
+  }
+  const tGradingReportMatch = path.match(/^\/api\/teacher\/courses\/([^/]+)\/assignments\/([^/]+)\/grading-report$/)
+  if (method === 'GET' && tGradingReportMatch) {
+    return handleTeacherGradingReport(tGradingReportMatch[1], tGradingReportMatch[2])
+  }
+  // 查重
+  const tAnalyzeMatch = path.match(/^\/api\/teacher\/courses\/([^/]+)\/assignments\/([^/]+)\/analyze$/)
+  if (method === 'POST' && tAnalyzeMatch) {
+    return handleTeacherAnalyze(tAnalyzeMatch[1], tAnalyzeMatch[2], data)
+  }
+  const tAnalyzeReportMatch = path.match(/^\/api\/teacher\/courses\/([^/]+)\/assignments\/([^/]+)\/analyze-report$/)
+  if (method === 'GET' && tAnalyzeReportMatch) {
+    return handleTeacherAnalyzeReport(tAnalyzeReportMatch[1], tAnalyzeReportMatch[2])
+  }
 
-  async getSessionMessages(
-    sessionId: string,
-  ): Promise<ApiResponse<SessionMessagesData>> {
-    await delay()
-    const messages = store.sessions.get(sessionId) || []
-    return {
-      success: true,
-      data: { session_id: sessionId, messages },
-      message: 'ok',
-    }
-  },
-
-  // ── 学生端作业 ───────────────────────────────────────────
-
-  async getStudentAssignments(params?: {
-    course?: string
-    status?: string
-  }): Promise<ApiResponse<StudentAssignmentListData>> {
-    await delay()
-    let items = store.assignments.map((a) => ({
-      id: a.id,
-      title: a.title,
-      course: a.course,
-      due_at: a.due_at,
-      status: a.status,
-      submitted: store.submissions.some(
-        (s) =>
-          s.assignment_id === a.id && s.student_id === MOCK_STUDENT.id,
-      ),
-    }))
-    if (params?.course) items = items.filter((i) => i.course === params.course)
-    if (params?.status) items = items.filter((i) => i.status === params.status)
-    return {
-      success: true,
-      data: { items, total: items.length },
-      message: 'ok',
-    }
-  },
-
-  async getStudentAssignmentDetail(
-    id: string,
-  ): Promise<ApiResponse<StudentAssignmentDetail>> {
-    await delay()
-    const a = store.assignments.find((x) => x.id === id)
-    if (!a) throw { response: { status: 404 } }
-    return {
-      success: true,
-      data: {
-        id: a.id,
-        title: a.title,
-        course: a.course,
-        description: a.description,
-        due_at: a.due_at,
-        status: a.status,
-        attachment_url: a.attachment_url,
-        submitted: store.submissions.some(
-          (s) => s.assignment_id === a.id && s.student_id === MOCK_STUDENT.id,
-        ),
-      },
-      message: 'ok',
-    }
-  },
-
-  async submitAssignment(
-    assignmentId: string,
-    submitType: 'text',
-    content: string,
-  ): Promise<ApiResponse<SubmissionData>> {
-    await delay()
-    const sub: typeof store.submissions[number] = {
-      id: uid('submission'),
-      assignment_id: assignmentId,
-      student_id: MOCK_STUDENT.id,
-      student_name: MOCK_STUDENT.name,
-      submit_type: submitType,
-      content,
-      file_path: null,
-      submitted_at: new Date().toISOString(),
-      status: 'submitted',
-    }
-    store.submissions.push(sub)
-    return {
-      success: true,
-      data: {
-        id: sub.id,
-        assignment_id: sub.assignment_id,
-        student_id: sub.student_id,
-        submit_type: sub.submit_type,
-        submitted_at: sub.submitted_at,
-        status: sub.status,
-      },
-      message: 'submitted',
-    }
-  },
-
-  async getMySubmission(
-    assignmentId: string,
-  ): Promise<ApiResponse<MySubmissionData | null>> {
-    await delay()
-    const sub = store.submissions.find(
-      (s) =>
-        s.assignment_id === assignmentId && s.student_id === MOCK_STUDENT.id,
-    )
-    if (!sub) {
-      return { success: true, data: null as unknown as MySubmissionData, message: 'ok' }
-    }
-    return {
-      success: true,
-      data: {
-        id: sub.id,
-        assignment_id: sub.assignment_id,
-        submit_type: sub.submit_type,
-        file_url: null,
-        submitted_at: sub.submitted_at,
-        status: sub.status,
-      },
-      message: 'ok',
-    }
-  },
-
-  // ── 知识点总结 ───────────────────────────────────────────
-
-  async createSummary(params: {
-    title: string
-    course?: string
-    source_text: string
-    summary_type?: string
-  }): Promise<ApiResponse<SummaryDetail>> {
-    await delay(800)
-    const s = {
-      id: uid('summary'),
-      user_id: MOCK_STUDENT.id,
-      title: params.title,
-      course: params.course || '',
-      source_text: params.source_text,
-      summary: {
-        overview: `这是关于"${params.title}"的知识点总结。主要内容涵盖了核心概念和关键原理。`,
-        key_points: [
-          '核心概念定义与特征',
-          '关键原理与应用场景',
-          '与其他知识点的关联',
-        ],
-        difficult_points: [
-          '抽象概念的理解',
-          '复杂公式的推导过程',
-        ],
-        review_tips: [
-          '建议制作思维导图梳理知识结构',
-          '结合例题加深对概念的理解',
-          '定期回顾巩固记忆',
-        ],
-      },
-      created_at: new Date().toISOString(),
-    }
-    store.summaries.push(s)
-    return { success: true, data: s, message: 'created' }
-  },
-
-  async getSummaries(params?: {
-    course?: string
-    keyword?: string
-  }): Promise<ApiResponse<SummaryListData>> {
-    await delay()
-    let items = store.summaries.map((s) => ({
-      id: s.id,
-      title: s.title,
-      course: s.course,
-      created_at: s.created_at,
-    }))
-    if (params?.course)
-      items = items.filter((i) => i.course === params.course)
-    if (params?.keyword)
-      items = items.filter(
-        (i) =>
-          i.title.includes(params.keyword!) ||
-          i.course.includes(params.keyword!),
-      )
-    return {
-      success: true,
-      data: { items, total: items.length },
-      message: 'ok',
-    }
-  },
-
-  async getSummary(id: string): Promise<ApiResponse<SummaryDetail>> {
-    await delay()
-    const s = store.summaries.find((x) => x.id === id)
-    if (!s) throw { response: { status: 404 } }
-    return { success: true, data: s, message: 'ok' }
-  },
-
-  async deleteSummary(
-    id: string,
-  ): Promise<ApiResponse<{ id: string }>> {
-    await delay()
-    store.summaries = store.summaries.filter((s) => s.id !== id)
-    return { success: true, data: { id }, message: 'deleted' }
-  },
-
-  // ── 学习计划 ─────────────────────────────────────────────
-
-  async createLearningPlan(params: {
-    course: string
-    goal: string
-    grade_records?: { exam_name: string; score: number; full_score: number }[]
-    homework_records?: {
-      title: string
-      score: number
-      full_score: number
-      weak_points: string[]
-    }[]
-    available_time_per_day?: number
-  }): Promise<ApiResponse<LearningPlanData>> {
-    await delay(800)
-    const mins = params.available_time_per_day || 60
-    const plan: LearningPlanData = {
-      id: uid('plan'),
-      course: params.course,
-      analysis: {
-        current_level: '根据已有成绩分析，当前水平处于中等偏上，有提升空间',
-        weak_points: params.homework_records
-          ?.flatMap((r) => r.weak_points) || [],
-        priority: '优先巩固薄弱知识点，再进行综合训练',
-      },
-      plan: Array.from({ length: 7 }, (_, i) => ({
-        day: i + 1,
-        task: [
-          `复习${params.course}第${i + 1}章核心知识点`,
-          `完成${params.course}相关练习题 ${Math.floor(mins / 10)} 道`,
-          `整理错题笔记并总结解题方法`,
-          `进行单元小测检验学习效果`,
-          `回顾本周学习内容并查漏补缺`,
-          `进行综合性练习，提升应用能力`,
-          `进行模拟测试，评估学习成果`,
-        ][i],
-        duration_minutes: mins,
-      })),
-      created_at: new Date().toISOString(),
-    }
-    store.learningPlans.push({ ...plan, student_id: MOCK_STUDENT.id, status: 'active' as const })
-    return { success: true, data: plan, message: 'created' }
-  },
-
-  async getLearningPlans(params?: {
-    course?: string
-    status?: string
-  }): Promise<ApiResponse<LearningPlanListData>> {
-    await delay()
-    let items = store.learningPlans.map((p) => ({
-      id: p.id,
-      course: p.course,
-      status: p.status,
-      created_at: p.created_at,
-    }))
-    if (params?.course)
-      items = items.filter((i) => i.course === params.course)
-    if (params?.status)
-      items = items.filter((i) => i.status === params.status)
-    return {
-      success: true,
-      data: { items, total: items.length },
-      message: 'ok',
-    }
-  },
-
-  // ── 教师端作业管理 ───────────────────────────────────────
-
-  async publishAssignment(formData: {
-    title: string
-    course: string
-    description: string
-    due_at: string
-    reference_answer?: string
-    rubric?: string
-  }): Promise<ApiResponse<TeacherAssignmentDetail>> {
-    await delay()
-    const a = {
-      id: uid('assignment'),
-      teacher_id: MOCK_TEACHER.id,
-      title: formData.title,
-      course: formData.course,
-      description: formData.description,
-      reference_answer: formData.reference_answer || '',
-      rubric: formData.rubric || '',
-      attachment_url: null as string | null,
-      due_at: formData.due_at,
-      status: 'open' as const,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    }
-    store.assignments.push(a)
-    return {
-      success: true,
-      data: {
-        id: a.id,
-        title: a.title,
-        course: a.course,
-        description: a.description,
-        reference_answer: a.reference_answer || null,
-        rubric: a.rubric || null,
-        due_at: a.due_at,
-        status: a.status,
-        attachment_url: a.attachment_url,
-        submission_count: 0,
-        created_at: a.created_at,
-        updated_at: a.updated_at,
-      },
-      message: 'published',
-    }
-  },
-
-  async getTeacherAssignments(params?: {
-    course?: string
-    status?: string
-  }): Promise<ApiResponse<TeacherAssignmentListData>> {
-    await delay()
-    let items = store.assignments.map((a) => ({
-      id: a.id,
-      title: a.title,
-      course: a.course,
-      due_at: a.due_at,
-      status: a.status,
-      submission_count: store.submissions.filter(
-        (s) => s.assignment_id === a.id,
-      ).length,
-      total_students: 40,
-    }))
-    if (params?.course) items = items.filter((i) => i.course === params.course)
-    if (params?.status) items = items.filter((i) => i.status === params.status)
-    return {
-      success: true,
-      data: { items, total: items.length },
-      message: 'ok',
-    }
-  },
-
-  async getTeacherAssignmentDetail(
-    id: string,
-  ): Promise<ApiResponse<TeacherAssignmentDetail>> {
-    await delay()
-    const a = store.assignments.find((x) => x.id === id)
-    if (!a) throw { response: { status: 404 } }
-    return {
-      success: true,
-      data: {
-        id: a.id,
-        title: a.title,
-        course: a.course,
-        description: a.description,
-        reference_answer: a.reference_answer || null,
-        rubric: a.rubric || null,
-        due_at: a.due_at,
-        status: a.status,
-        attachment_url: a.attachment_url,
-        submission_count: store.submissions.filter(
-          (s) => s.assignment_id === a.id,
-        ).length,
-        created_at: a.created_at,
-        updated_at: a.updated_at,
-      },
-      message: 'ok',
-    }
-  },
-
-  async updateAssignment(
-    id: string,
-    updates: { description?: string; due_at?: string },
-  ): Promise<ApiResponse<{ id: string; description: string; due_at: string; updated_at: string }>> {
-    await delay()
-    const a = store.assignments.find((x) => x.id === id)
-    if (!a) throw { response: { status: 404 } }
-    if (updates.description) a.description = updates.description
-    if (updates.due_at) a.due_at = updates.due_at
-    a.updated_at = new Date().toISOString()
-    return {
-      success: true,
-      data: {
-        id: a.id,
-        description: a.description,
-        due_at: a.due_at,
-        updated_at: a.updated_at,
-      },
-      message: 'updated',
-    }
-  },
-
-  async closeAssignment(
-    id: string,
-  ): Promise<ApiResponse<{ id: string; status: string }>> {
-    await delay()
-    const a = store.assignments.find((x) => x.id === id)
-    if (!a) throw { response: { status: 404 } }
-    a.status = 'closed'
-    return {
-      success: true,
-      data: { id: a.id, status: a.status },
-      message: 'closed',
-    }
-  },
-
-  async getSubmissions(
-    assignmentId: string,
-  ): Promise<ApiResponse<TeacherSubmissionListData>> {
-    await delay()
-    const items = store.submissions
-      .filter((s) => s.assignment_id === assignmentId)
-      .map((s) => ({
-        id: s.id,
-        student_id: s.student_id,
-        student_name: s.student_name,
-        submit_type: s.submit_type,
-        submitted_at: s.submitted_at,
-        status: s.status,
-      }))
-    return {
-      success: true,
-      data: { assignment_id: assignmentId, items, total: items.length },
-      message: 'ok',
-    }
-  },
-
-  // ── AI 批改 ─────────────────────────────────────────────
-
-  async gradeSubmissions(
-    assignmentId: string,
-    submissionIds: string[],
-  ): Promise<ApiResponse<GradeResultData>> {
-    await delay(1000)
-    const results = submissionIds.map((sid) => {
-      const sub = store.submissions.find((s) => s.id === sid)
-      const result = {
-        submission_id: sid,
-        student_id: sub?.student_id || '',
-        student_name: sub?.student_name || '未知',
-        ai_score: Math.floor(Math.random() * 20) + 75,
-        comments: '整体思路正确，部分细节可以进一步完善。',
-        deductions: [
-          { point: '概念解释不够完整', minus: 5 },
-          { point: '缺少具体案例分析', minus: 3 },
-        ],
-        suggestions: [
-          '补充更多具体案例来支撑论点',
-          '加强对核心概念的定义性描述',
-        ],
-        confirmed: false,
-      }
-      store.grades.set(sid, result)
-      return result
-    })
-    return {
-      success: true,
-      data: { assignment_id: assignmentId, results },
-      message: 'graded',
-    }
-  },
-
-  async confirmGrade(
-    submissionId: string,
-    finalScore: number,
-    confirmed: boolean,
-    teacherComment?: string,
-  ): Promise<
-    ApiResponse<{
-      submission_id: string
-      final_score: number
-      confirmed: boolean
-    }>
-  > {
-    await delay()
-    const g = store.grades.get(submissionId)
-    if (g) {
-      g.final_score = finalScore
-      g.confirmed = confirmed
-      g.teacher_comment = teacherComment
-    }
-    return {
-      success: true,
-      data: { submission_id: submissionId, final_score: finalScore, confirmed },
-      message: 'updated',
-    }
-  },
-
-  async getGradingReport(
-    assignmentId: string,
-  ): Promise<ApiResponse<GradingReportData>> {
-    await delay()
-    const grades = Array.from(store.grades.values())
-    const scores = grades.map((g) => g.final_score || g.ai_score)
-    const avg =
-      scores.length > 0
-        ? scores.reduce((a, b) => a + b, 0) / scores.length
-        : 0
-    return {
-      success: true,
-      data: {
-        assignment_id: assignmentId,
-        average_score: Math.round(avg * 10) / 10,
-        graded_count: grades.length,
-        common_mistakes: ['概念解释不完整', '缺少案例分析', '结论过于简略'],
-        weak_points: ['核心概念定义', '案例分析能力', '逻辑推导过程'],
-        teaching_suggestions: [
-          '建议课堂上使用流程图讲解核心概念',
-          '安排一次概念对比小测',
-          '提供更多案例分析练习',
-        ],
-      },
-      message: 'ok',
-    }
-  },
-
-  // ── 查重与比对 ──────────────────────────────────────────
-
-  async analyzeSubmissions(
-    assignmentId: string,
-    submissionIds: string[],
-    _threshold?: number,
-    dimensions?: string[],
-  ): Promise<ApiResponse<AnalyzeReportData>> {
-    await delay(1200)
-    const dims = dimensions || [
-      'structure',
-      'concept',
-      'expression',
-      'conclusion',
-    ]
-
-    const submissions = submissionIds.map((sid) => {
-      const sub = store.submissions.find((s) => s.id === sid)
-      return {
-        submission_id: sid,
-        student_name: sub?.student_name || '未知',
-      }
-    })
-
-    const suspiciousPairs: SuspiciousPair[] =
-      submissions.length >= 2
-        ? [
-            {
-              submission_a: submissions[0].submission_id,
-              student_a: submissions[0].student_name,
-              submission_b: submissions[1].submission_id,
-              student_b: submissions[1].student_name,
-              similarity: 0.87,
-              risk_level: 'high',
-              similar_segments: [
-                '对核心概念的定义表述高度一致',
-                '结论段落结构相同',
-              ],
-              ai_reason:
-                '两份作业在观点顺序、关键句表达和例子选择上高度相似，存在参考同一来源的可能。',
-            },
-          ]
-        : []
-
-    const comparisonDetails: ComparisonDetail[] = submissions.map(
-      (s) => ({
-        submission_id: s.submission_id,
-        student_name: s.student_name,
-        strengths: [
-          '对核心概念有一定理解',
-          '结合了具体场景举例',
-        ],
-        weaknesses: ['缺少深入分析', '部分推导跳跃'],
-        dimension_scores: Object.fromEntries(
-          dims.map((d) => [d, ['完整', '准确', '流畅', '一般'][Math.floor(Math.random() * 4)]]),
-        ),
-      }),
-    )
-
-    return {
-      success: true,
-      data: {
-        report_id: uid('report'),
-        assignment_id: assignmentId,
-        suspicious_pairs: suspiciousPairs,
-        comparison_details: comparisonDetails,
-        common_issues: ['都没有结合具体场景举例', '结论部分较为简略'],
-        teaching_suggestions: [
-          '课堂上补充相关案例',
-          '强调概念解释和例子结合',
-        ],
-        created_at: new Date().toISOString(),
-      },
-      message: 'analyzed',
-    }
-  },
-
-  async getAnalyzeReport(
-    assignmentId: string,
-  ): Promise<ApiResponse<AnalyzeReportData>> {
-    await delay()
-    return this.analyzeSubmissions(assignmentId, [])
-  },
+  return null // 不匹配，走真实网络请求
 }
 
 // ═══════════════════════════════════════════════════════════════
-// 智能回答生成（模拟 AI）
+// 处理函数
 // ═══════════════════════════════════════════════════════════════
 
-function generateMockAnswer(question: string, course?: string): string {
-  const coursePrefix = course ? `在${course}课程中，` : ''
-  const templates = [
-    `${coursePrefix}这是一个很好的问题。${question.replace('？', '').replace('?', '')}主要涉及以下几个方面的知识点：\n\n首先，从基本概念来看，需要理解相关的定义和核心原理。\n\n其次，从应用层面来看，这些知识在实践中有广泛的应用场景。\n\n最后，建议你结合课本内容和练习题来加深理解。如有疑问，欢迎继续提问。`,
-    `${coursePrefix}关于这个问题，我来为你详细解答：\n\n该知识点是${course || '该课程'}的重要组成部分，理解它对于后续学习非常关键。核心要点包括：\n1. 基本概念和定义\n2. 关键特征和属性\n3. 与其他知识点的关联\n\n希望这个解答对你有帮助！`,
-    `${coursePrefix}很好的问题！让我从以下几个角度来分析：\n\n从理论角度，这涉及到一些基本的原理和定义。\n\n从实践角度，这些理论在实际中有多种应用方式。\n\n从学习角度，建议你通过画图、列表对比等方式来加深理解。`,
-  ]
-  return templates[Math.floor(Math.random() * templates.length)]
+async function handleLogin(body: { username: string; password: string }): Promise<ApiResponse<LoginData>> {
+  await delay()
+  if (body.username === STUDENT.username && body.password === '123456') {
+    return { success: true, data: { token: MOCK_TOKEN, expires_in: 86400, user: STUDENT }, message: 'ok' }
+  }
+  if (body.username === TEACHER.username && body.password === '123456') {
+    return { success: true, data: { token: MOCK_TOKEN, expires_in: 86400, user: TEACHER }, message: 'ok' }
+  }
+  throw { response: { status: 401, data: { detail: '用户名或密码错误' } } }
+}
+
+async function handleRegister(role: string, body: unknown): Promise<ApiResponse<RegisterData>> {
+  await delay()
+  const d = body as Record<string, string>
+  return { success: true, data: { id: uid('user'), username: d.username, name: d.name, role: role as 'student' | 'teacher' }, message: 'registered' }
+}
+
+async function handleGetMe(): Promise<ApiResponse<UserInfo>> {
+  await delay()
+  const u = store.currentUser || JSON.parse(localStorage.getItem('user') || 'null') || STUDENT
+  return { success: true, data: u, message: 'ok' }
+}
+
+async function handleGetCourses(): Promise<ApiResponse<{ items: StudentCourseItem[]; total: number }>> {
+  await delay()
+  const items: StudentCourseItem[] = Object.values(COURSES).map((c) => ({
+    id: c.id, name: c.name, teacher_name: c.teacher_name,
+    semester: c.semester, status: c.status,
+    section_count: c.section_count, completed_sections: c.completed_sections,
+    total_score: c.total_score, joined_at: c.joined_at,
+  }))
+  return { success: true, data: { items, total: items.length }, message: 'ok' }
+}
+
+async function handleJoinCourse(body: { code: string }): Promise<ApiResponse<JoinCourseData>> {
+  await delay(400)
+  // 模拟：课程码 "ABC123" 加入操作系统课程
+  if (body.code === 'ABC123' || body.code === 'OS8X2K') {
+    return {
+      success: true,
+      data: { course_id: 'course_001', course_name: '操作系统', teacher_name: '李老师', semester: '2026春季', joined_at: new Date().toISOString() },
+      message: 'joined',
+    }
+  }
+  throw { response: { status: 404, data: { detail: '课程码无效或课程不存在' } } }
+}
+
+async function handleGetCourseDetail(courseId: string): Promise<ApiResponse<StudentCourseDetail>> {
+  await delay()
+  const c = COURSES[courseId]
+  if (!c) throw { response: { status: 404 } }
+  return { success: true, data: c, message: 'ok' }
+}
+
+async function handleGetSections(courseId: string): Promise<ApiResponse<{ course_id: string; items: SectionItem[]; total: number }>> {
+  await delay()
+  const items = store.sections[courseId] || []
+  return { success: true, data: { course_id: courseId, items, total: items.length }, message: 'ok' }
+}
+
+async function handleSendMessage(courseId: string, body: { question: string; session_id?: string }): Promise<ApiResponse<ChatData>> {
+  await delay(800)
+  const sessionId = body.session_id || uid('session')
+  const courseName = COURSES[courseId]?.name || '课程'
+
+  const answer = `关于「${body.question.replace('？', '').replace('?', '')}」这个问题，以下是详细解答：\n\n在${courseName}中，这是一个核心知识点。让我从几个方面来分析：\n\n**基本概念**\n首先需要理解相关的定义和核心原理。\n\n**关键要点**\n1. 理解基本概念和定义\n2. 掌握关键特征和属性\n3. 注意与其他知识点的关联\n\n**应用场景**\n这些知识在实际工程中有广泛的应用。\n\n希望这个解答对你有帮助！如有疑问欢迎继续追问。`
+
+  const suggestions = [`可以结合${courseName}课本进一步理解该知识点`, '建议做一些相关练习题加深印象', '如果有疑问可以继续追问']
+
+  // 存储会话
+  if (!store.chatSessions[sessionId]) {
+    store.chatSessions[sessionId] = {
+      id: sessionId, course_id: courseId,
+      last_question: body.question, message_count: 0,
+      created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+      messages: [],
+    }
+  }
+  const session = store.chatSessions[sessionId]
+  session.messages.push({ id: uid('msg'), role: 'user', content: body.question, created_at: new Date().toISOString() })
+  session.messages.push({
+    id: uid('msg'), role: 'assistant', content: answer, rag_used: true,
+    references: [{ section_id: 'section_001', section_title: '第一章：进程管理', file_name: 'section_001_slides.pdf', excerpt: '相关课程材料摘录...' }],
+    created_at: new Date().toISOString(),
+  })
+  session.message_count = session.messages.length
+  session.last_question = body.question
+  session.updated_at = new Date().toISOString()
+
+  return { success: true, data: { session_id: sessionId, answer, rag_used: true, references: session.messages[session.messages.length - 1].references || [], suggestions }, message: 'ok' }
+}
+
+async function handleGetChatSessions(courseId: string): Promise<ApiResponse<{ course_id: string; items: ChatSessionItem[]; total: number }>> {
+  await delay()
+  const items: ChatSessionItem[] = Object.values(store.chatSessions)
+    .filter((s) => s.course_id === courseId)
+    .map((s) => ({ id: s.id, last_question: s.last_question, message_count: s.message_count, created_at: s.created_at, updated_at: s.updated_at }))
+  return { success: true, data: { course_id: courseId, items, total: items.length }, message: 'ok' }
+}
+
+async function handleGetSessionMessages(courseId: string, sessionId: string): Promise<ApiResponse<SessionMessagesData>> {
+  await delay()
+  const s = store.chatSessions[sessionId]
+  const messages = s?.messages || []
+  return { success: true, data: { session_id: sessionId, course_id: courseId, messages }, message: 'ok' }
+}
+
+async function handleGetAssignments(courseId: string): Promise<ApiResponse<{ course_id: string; items: StudentAssignmentItem[]; total: number }>> {
+  await delay()
+  const list = store.assignments[courseId] || []
+  const items: StudentAssignmentItem[] = list.map((a) => ({
+    id: a.id, title: a.title, section_id: a.section_id, section_title: a.section_title,
+    due_at: a.due_at, full_score: a.full_score, status: a.status,
+    submitted: !!store.submissions[a.id],
+    score: store.submissions[a.id]?.score ?? null,
+  }))
+  return { success: true, data: { course_id: courseId, items, total: items.length }, message: 'ok' }
+}
+
+async function handleGetAssignmentDetail(courseId: string, asgId: string): Promise<ApiResponse<StudentAssignmentDetail>> {
+  await delay()
+  const list = store.assignments[courseId] || []
+  const a = list.find((x) => x.id === asgId)
+  if (!a) throw { response: { status: 404 } }
+  const sub = store.submissions[asgId]
+  return {
+    success: true, data: {
+      id: a.id, course_id: a.course_id, section_id: a.section_id, section_title: a.section_title,
+      title: a.title, description: a.description, due_at: a.due_at, full_score: a.full_score,
+      status: a.status, attachment_url: a.attachment_url,
+      submitted: !!sub, score: sub?.score ?? null,
+    }, message: 'ok',
+  }
+}
+
+async function handleSubmitAssignment(_courseId: string, asgId: string, data: unknown): Promise<ApiResponse<SubmissionData>> {
+  await delay(400)
+  const fd = data as FormData
+  const content = fd.get('content') as string || ''
+  const sub = {
+    id: uid('submission'), assignment_id: asgId, submit_type: 'text' as const, content,
+    submitted_at: new Date().toISOString(),
+    score: null, ai_score: null, comments: null, deductions: [], suggestions: [],
+    teacher_comment: null, graded_at: null,
+  }
+  store.submissions[asgId] = sub
+  return { success: true, data: { id: sub.id, assignment_id: asgId, student_id: STUDENT.id, submit_type: 'text', submitted_at: sub.submitted_at, status: 'submitted' }, message: 'submitted' }
+}
+
+async function handleGetMySubmission(_courseId: string, asgId: string): Promise<ApiResponse<MySubmissionData | null>> {
+  await delay()
+  const sub = store.submissions[asgId]
+  if (!sub) return { success: true, data: null as unknown as MySubmissionData, message: 'ok' }
+  return { success: true, data: { id: sub.id, assignment_id: sub.assignment_id, submit_type: sub.submit_type, file_url: null, submitted_at: sub.submitted_at, status: 'submitted', score: sub.score, ai_score: sub.ai_score, comments: sub.comments, deductions: sub.deductions, suggestions: sub.suggestions, teacher_comment: sub.teacher_comment, graded_at: sub.graded_at }, message: 'ok' }
+}
+
+async function handleCreateSummary(courseId: string, data: unknown): Promise<ApiResponse<SummaryDetail>> {
+  await delay(800)
+  const body = data as Record<string, string>
+  const item: SummaryDetail = {
+    id: uid('summary'), course_id: courseId, section_id: body.section_id,
+    section_title: body.section_id ? '第一章：进程管理' : undefined,
+    title: body.title, rag_used: !body.source_text,
+    references: body.source_text ? [] : [{ section_id: 'section_001', section_title: '第一章：进程管理', file_name: 'section_001_slides.pdf', excerpt: '课程材料摘录...' }],
+    summary: {
+      overview: `这是关于"${body.title}"的知识点总结。主要内容涵盖了核心概念和关键原理。`,
+      key_points: ['核心概念定义与特征', '关键原理与应用场景', '与其他知识点的关联'],
+      difficult_points: ['抽象概念的理解', '复杂公式的推导过程'],
+      review_tips: ['建议制作思维导图梳理知识结构', '结合例题加深对概念的理解', '定期回顾巩固记忆'],
+    },
+    created_at: new Date().toISOString(),
+  }
+  if (!store.summaries[courseId]) store.summaries[courseId] = []
+  store.summaries[courseId].push(item)
+  return { success: true, data: item, message: 'created' }
+}
+
+async function handleGetSummaries(courseId: string): Promise<ApiResponse<{ course_id: string; items: SummaryListItem[]; total: number }>> {
+  await delay()
+  const items: SummaryListItem[] = (store.summaries[courseId] || []).map((s) => ({
+    id: s.id, section_id: s.section_id, section_title: s.section_title,
+    title: s.title, rag_used: s.rag_used, created_at: s.created_at,
+  }))
+  return { success: true, data: { course_id: courseId, items, total: items.length }, message: 'ok' }
+}
+
+async function handleGetSummary(courseId: string, summaryId: string): Promise<ApiResponse<SummaryDetail>> {
+  await delay()
+  const items = store.summaries[courseId] || []
+  const s = items.find((x) => x.id === summaryId)
+  if (!s) throw { response: { status: 404 } }
+  return { success: true, data: s, message: 'ok' }
+}
+
+async function handleDeleteSummary(courseId: string, summaryId: string): Promise<ApiResponse<{ id: string }>> {
+  await delay()
+  if (store.summaries[courseId]) {
+    store.summaries[courseId] = store.summaries[courseId].filter((s) => s.id !== summaryId)
+  }
+  return { success: true, data: { id: summaryId }, message: 'deleted' }
+}
+
+async function handleCreateLearningPlan(courseId: string, data: unknown): Promise<ApiResponse<LearningPlanData>> {
+  await delay(1000)
+  const body = data as Record<string, unknown>
+  const course = COURSES[courseId]
+  const mins = (body.available_time_per_day as number) || 60
+  const plan: LearningPlanData = {
+    id: uid('plan'), course_id: courseId, course_name: course?.name || '',
+    career_direction: 'backend', version: 1, parent_plan_id: null,
+    data_sources: ['scores', 'quizzes', 'profile', 'chat_sessions'],
+    analysis: {
+      current_level: '根据已有成绩分析，当前水平处于中等偏上',
+      weak_points: ['核心概念理解', '综合应用能力'],
+      career_relevance: '这些知识在后端开发中有重要应用',
+      priority: '优先巩固薄弱知识点，再进行综合训练',
+    },
+    plan: Array.from({ length: 5 }, (_, i) => ({
+      day: i + 1,
+      task: [`复习${course?.name || '课程'}第${i + 1}章核心知识点`, `完成相关练习题 ${Math.floor(mins / 10)} 道`, '整理错题笔记并总结解题方法', '进行单元小测检验学习效果', '回顾本周学习内容并查漏补缺'][i],
+      duration_minutes: mins,
+      section_id: undefined,
+      section_title: undefined,
+    })),
+    created_at: new Date().toISOString(),
+  }
+  if (!store.learningPlans[courseId]) store.learningPlans[courseId] = []
+  store.learningPlans[courseId].push(plan)
+  return { success: true, data: plan, message: 'created' }
+}
+
+async function handleGetLearningPlans(courseId: string): Promise<ApiResponse<{ course_id: string; items: LearningPlanListItem[]; total: number }>> {
+  await delay()
+  const items: LearningPlanListItem[] = (store.learningPlans[courseId] || []).map((p) => ({
+    id: p.id, course_id: p.course_id, course_name: p.course_name,
+    version: p.version, status: 'active' as const, created_at: p.created_at,
+  }))
+  return { success: true, data: { course_id: courseId, items, total: items.length }, message: 'ok' }
+}
+
+async function handleGetLearningPlan(courseId: string, planId: string): Promise<ApiResponse<LearningPlanData>> {
+  await delay()
+  const items = store.learningPlans[courseId] || []
+  const p = items.find((x) => x.id === planId)
+  if (!p) {
+    // fallback to pre-seeded
+    const pre = (store.learningPlans['course_001'] || []).find((x) => x.id === planId)
+    if (pre) return { success: true, data: pre, message: 'ok' }
+    throw { response: { status: 404 } }
+  }
+  return { success: true, data: p, message: 'ok' }
+}
+
+async function handleUpdatePlanStatus(_courseId: string, planId: string, data: unknown): Promise<ApiResponse<{ id: string; status: string }>> {
+  await delay()
+  return { success: true, data: { id: planId, status: (data as Record<string, string>).status }, message: 'updated' }
+}
+
+async function handleMarkTaskComplete(_courseId: string, _planId: string, data: unknown): Promise<ApiResponse<PlanProgress['tasks'][number]>> {
+  await delay()
+  const body = data as Record<string, unknown>
+  return {
+    success: true,
+    data: {
+      day: body.day as number, task: '', duration_minutes: 60,
+      completed: body.completed as boolean,
+      feedback: body.feedback as string || null,
+      completed_at: new Date().toISOString(),
+    },
+    message: 'updated',
+  }
+}
+
+async function handleGetPlanProgress(_courseId: string, planId: string): Promise<ApiResponse<PlanProgress>> {
+  await delay()
+  const progress = store.planProgress[planId]
+  if (progress) return { success: true, data: progress, message: 'ok' }
+  // 返回空进度
+  return { success: true, data: { plan_id: planId, version: 1, total_days: 0, completed_days: 0, completion_rate: 0, tasks: [] }, message: 'ok' }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 教师端 Mock 处理函数
+// ═══════════════════════════════════════════════════════════════
+
+const TEACHER_COURSES_STORE: Record<string, {
+  id: string; name: string; description: string; code: string; semester: string;
+  status: string; teacher_id: string; teacher_name: string;
+  student_count: number; section_count: number;
+  created_at: string; updated_at: string;
+  students: { id: string; username: string; name: string; class_name: string; joined_at: string; total_score: number }[];
+}> = {
+  course_001: {
+    id: 'course_001', name: '操作系统', description: '本课程介绍操作系统的核心原理', code: 'OS8X2K',
+    semester: '2026春季', status: 'active', teacher_id: TEACHER.id, teacher_name: TEACHER.name,
+    student_count: 35, section_count: 3,
+    created_at: '2026-06-01T10:00:00+08:00', updated_at: '2026-06-01T10:00:00+08:00',
+    students: [
+      { id: STUDENT.id, username: STUDENT.username, name: STUDENT.name, class_name: STUDENT.class_name || '', joined_at: '2026-06-04T10:30:00+08:00', total_score: 87.5 },
+      { id: 'user_s2', username: '20240102', name: '李四', class_name: '计算机2401班', joined_at: '2026-06-04T11:00:00+08:00', total_score: 92 },
+      { id: 'user_s3', username: '20240103', name: '王五', class_name: '计算机2401班', joined_at: '2026-06-04T11:30:00+08:00', total_score: 78 },
+    ],
+  },
+}
+
+async function handleTeacherGetCourses(): Promise<ApiResponse<{ items: { id: string; name: string; code: string; semester: string; status: string; student_count: number; section_count: number; created_at: string }[]; total: number }>> {
+  await delay()
+  const items = Object.values(TEACHER_COURSES_STORE).map((c) => ({
+    id: c.id, name: c.name, code: c.code, semester: c.semester,
+    status: c.status, student_count: c.student_count, section_count: c.section_count,
+    created_at: c.created_at,
+  }))
+  return { success: true, data: { items, total: items.length }, message: 'ok' }
+}
+
+async function handleTeacherCreateCourse(data: unknown): Promise<ApiResponse<unknown>> {
+  await delay(400)
+  const body = data as Record<string, string>
+  const id = uid('course')
+  const course = {
+    id, name: body.name, description: body.description || '', code: 'CS' + Math.random().toString(36).slice(2, 6).toUpperCase(),
+    semester: body.semester || '', status: 'active', teacher_id: TEACHER.id, teacher_name: TEACHER.name,
+    student_count: 0, section_count: 0,
+    created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+    students: [],
+  }
+  TEACHER_COURSES_STORE[id] = course
+  return { success: true, data: { id: course.id, name: course.name, description: course.description, code: course.code, semester: course.semester, status: course.status, teacher_id: course.teacher_id, teacher_name: course.teacher_name, student_count: 0, created_at: course.created_at }, message: 'created' }
+}
+
+async function handleTeacherGetCourseDetail(courseId: string): Promise<ApiResponse<unknown>> {
+  await delay()
+  const c = TEACHER_COURSES_STORE[courseId]
+  if (!c) throw { response: { status: 404 } }
+  return { success: true, data: { id: c.id, name: c.name, description: c.description, code: c.code, semester: c.semester, status: c.status, teacher_id: c.teacher_id, teacher_name: c.teacher_name, student_count: c.student_count, section_count: c.section_count, created_at: c.created_at, updated_at: c.updated_at }, message: 'ok' }
+}
+
+async function handleTeacherGetStudents(courseId: string): Promise<ApiResponse<unknown>> {
+  await delay()
+  const c = TEACHER_COURSES_STORE[courseId]
+  if (!c) throw { response: { status: 404 } }
+  return { success: true, data: { course_id: courseId, items: c.students, total: c.students.length }, message: 'ok' }
+}
+
+async function handleTeacherAddStudents(courseId: string, data: unknown): Promise<ApiResponse<unknown>> {
+  await delay()
+  const body = data as { usernames: string[] }
+  const c = TEACHER_COURSES_STORE[courseId]
+  if (!c) throw { response: { status: 404 } }
+  const added: { username: string; name: string; student_id: string }[] = []
+  const failed: { username: string; reason: string }[] = []
+  body.usernames.forEach((uname) => {
+    if (c.students.find((s) => s.username === uname)) {
+      failed.push({ username: uname, reason: '已在课程中' })
+    } else {
+      const sid = uid('user')
+      c.students.push({ id: sid, username: uname, name: '学生' + uname, class_name: '', joined_at: new Date().toISOString(), total_score: 0 })
+      added.push({ username: uname, name: '学生' + uname, student_id: sid })
+    }
+  })
+  c.student_count = c.students.length
+  return { success: true, data: { course_id: courseId, added, failed }, message: 'ok' }
+}
+
+async function handleTeacherRemoveStudent(courseId: string, studentId: string): Promise<ApiResponse<unknown>> {
+  await delay()
+  const c = TEACHER_COURSES_STORE[courseId]
+  if (!c) throw { response: { status: 404 } }
+  c.students = c.students.filter((s) => s.id !== studentId)
+  c.student_count = c.students.length
+  return { success: true, data: { course_id: courseId, student_id: studentId }, message: 'removed' }
+}
+
+async function handleTeacherGetSections(courseId: string): Promise<ApiResponse<unknown>> {
+  await delay()
+  const items = store.sections[courseId] || []
+  return { success: true, data: { course_id: courseId, items, total: items.length }, message: 'ok' }
+}
+
+async function handleTeacherCreateSection(courseId: string, data: unknown): Promise<ApiResponse<unknown>> {
+  await delay()
+  const body = data as Record<string, string>
+  const item: SectionItem & { course_id: string; created_at: string } = {
+    id: uid('section'), course_id: courseId,
+    title: body.title, description: body.description, order: Number(body.order) || 0,
+    material_url: null, assignment_count: 0, submitted_count: 0, section_score: null,
+    created_at: new Date().toISOString(),
+  }
+  if (!store.sections[courseId]) store.sections[courseId] = []
+  store.sections[courseId].push(item)
+  return { success: true, data: item, message: 'created' }
+}
+
+async function handleTeacherDeleteSection(courseId: string, sectionId: string): Promise<ApiResponse<unknown>> {
+  await delay()
+  if (store.sections[courseId]) {
+    store.sections[courseId] = store.sections[courseId].filter((s) => s.id !== sectionId)
+  }
+  return { success: true, data: { id: sectionId }, message: 'deleted' }
+}
+
+async function handleTeacherPublishAssignment(courseId: string, sectionId: string, data: unknown): Promise<ApiResponse<unknown>> {
+  await delay()
+  const fd = data as FormData
+  const asgId = uid('assignment')
+  const section = (store.sections[courseId] || []).find((s) => s.id === sectionId)
+  const asg = {
+    id: asgId, course_id: courseId, section_id: sectionId,
+    section_title: section?.title || '',
+    title: String(fd.get('title') || ''), description: String(fd.get('description') || ''),
+    due_at: String(fd.get('due_at') || ''), full_score: Number(fd.get('full_score')) || 100,
+    status: 'open' as const, attachment_url: null,
+  }
+  if (!store.assignments[courseId]) store.assignments[courseId] = []
+  store.assignments[courseId].push(asg)
+  return { success: true, data: { ...asg, created_at: new Date().toISOString() }, message: 'published' }
+}
+
+async function handleTeacherGetAssignments(courseId: string): Promise<ApiResponse<unknown>> {
+  await delay()
+  const list = store.assignments[courseId] || []
+  const items = list.map((a) => ({
+    id: a.id, title: a.title, section_id: a.section_id, section_title: a.section_title,
+    due_at: a.due_at, full_score: a.full_score, status: a.status,
+    submission_count: 0, total_students: 35,
+  }))
+  return { success: true, data: { course_id: courseId, items, total: items.length }, message: 'ok' }
+}
+
+async function handleTeacherGetAssignmentDetail(courseId: string, asgId: string): Promise<ApiResponse<unknown>> {
+  await delay()
+  const list = store.assignments[courseId] || []
+  const a = list.find((x) => x.id === asgId)
+  if (!a) throw { response: { status: 404 } }
+  return { success: true, data: { id: a.id, course_id: a.course_id, section_id: a.section_id, title: a.title, description: a.description, reference_answer: '参考答案：进程状态转换的关键在于理解就绪、运行、阻塞三种状态之间的转换条件...', rubric: '满分 100 分，概念 40 分，分析 40 分，表达 20 分。', due_at: a.due_at, full_score: a.full_score, status: a.status, attachment_url: a.attachment_url, submission_count: 25, created_at: '2026-06-04T10:00:00+08:00', updated_at: '2026-06-04T10:00:00+08:00' }, message: 'ok' }
+}
+
+async function handleTeacherCloseAssignment(_courseId: string, asgId: string): Promise<ApiResponse<unknown>> {
+  await delay()
+  return { success: true, data: { id: asgId, status: 'closed' }, message: 'closed' }
+}
+
+async function handleTeacherGetSubmissions(_courseId: string, asgId: string): Promise<ApiResponse<unknown>> {
+  await delay()
+  // 生成模拟提交
+  const items = TEACHER_COURSES_STORE['course_001']?.students.map((s) => ({
+    id: uid('submission'), student_id: s.id, student_name: s.name,
+    submit_type: 'text' as const, submitted_at: new Date(Date.now() - Math.random() * 86400000 * 3).toISOString(),
+    status: 'submitted', score: null, confirmed: false,
+  })) || []
+  return { success: true, data: { assignment_id: asgId, items, total: items.length }, message: 'ok' }
+}
+
+async function handleTeacherGrade(_courseId: string, asgId: string, data: unknown): Promise<ApiResponse<unknown>> {
+  await delay(1000)
+  const body = data as { submission_ids: string[] }
+  const results = body.submission_ids.map((sid) => ({
+    submission_id: sid, student_id: '', student_name: '学生',
+    ai_score: Math.floor(Math.random() * 20) + 75,
+    comments: '整体思路正确，部分细节可以进一步完善。',
+    deductions: [{ point: '概念解释不够完整', minus: 5 }],
+    suggestions: ['补充更多具体案例来支撑论点', '加强对核心概念的定义性描述'],
+    confirmed: false,
+  }))
+  return { success: true, data: { assignment_id: asgId, results }, message: 'graded' }
+}
+
+async function handleTeacherConfirmGrade(_courseId: string, _asgId: string, submissionId: string, data: unknown): Promise<ApiResponse<unknown>> {
+  await delay()
+  const body = data as { final_score: number; confirmed: boolean; teacher_comment?: string }
+  return { success: true, data: { submission_id: submissionId, final_score: body.final_score, confirmed: body.confirmed }, message: 'updated' }
+}
+
+async function handleTeacherGradingReport(_courseId: string, asgId: string): Promise<ApiResponse<unknown>> {
+  await delay()
+  return { success: true, data: { assignment_id: asgId, average_score: 82.5, graded_count: 25, unconfirmed_count: 3, common_mistakes: ['概念解释不完整', '缺少案例分析', '结论过于简略'], weak_points: ['核心概念定义', '案例分析能力', '逻辑推导过程'], teaching_suggestions: ['建议课堂上使用流程图讲解核心概念', '安排一次概念对比小测'] }, message: 'ok' }
+}
+
+async function handleTeacherAnalyze(_courseId: string, asgId: string, data: unknown): Promise<ApiResponse<unknown>> {
+  await delay(1200)
+  const body = data as { submission_ids: string[]; similarity_threshold?: number; compare_dimensions?: string[] }
+  const dims = body.compare_dimensions || ['structure', 'concept', 'expression', 'conclusion']
+  const submissions = body.submission_ids.map((sid, i) => ({ submission_id: sid, student_name: ['张三', '李四', '王五'][i % 3] }))
+  const suspiciousPairs = submissions.length >= 2 ? [{ submission_a: submissions[0].submission_id, student_a: submissions[0].student_name, submission_b: submissions[1].submission_id, student_b: submissions[1].student_name, similarity: 0.87, risk_level: 'high' as const, similar_segments: ['对核心概念的定义表述高度一致', '结论段落结构相同'], ai_reason: '两份作业在观点顺序、关键句表达和例子选择上高度相似' }] : []
+  const comparisonDetails = submissions.map((s) => ({ submission_id: s.submission_id, student_name: s.student_name, strengths: ['对核心概念有一定理解', '结合了具体场景举例'], weaknesses: ['缺少深入分析', '部分推导跳跃'], dimension_scores: Object.fromEntries(dims.map((d) => [d, ['完整', '准确', '流畅', '一般'][Math.floor(Math.random() * 4)]])) }))
+  return { success: true, data: { report_id: uid('report'), assignment_id: asgId, suspicious_pairs: suspiciousPairs, comparison_details: comparisonDetails, common_issues: ['都没有结合具体场景举例', '结论部分较为简略'], teaching_suggestions: ['课堂上补充相关案例', '强调概念解释和例子结合'], created_at: new Date().toISOString() }, message: 'analyzed' }
+}
+
+async function handleTeacherAnalyzeReport(_courseId: string, asgId: string): Promise<ApiResponse<unknown>> {
+  await delay()
+  return handleTeacherAnalyze(_courseId, asgId, { submission_ids: ['sub_001', 'sub_002', 'sub_003'], similarity_threshold: 0.8, compare_dimensions: ['structure', 'concept', 'expression', 'conclusion'] })
 }

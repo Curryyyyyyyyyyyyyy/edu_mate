@@ -1,18 +1,11 @@
 import { createBrowserRouter, Navigate } from 'react-router'
 import AuthGuard from '../components/AuthGuard'
-import Layout from '../components/Layout'
+import StudentLayout from '../components/StudentLayout'
+import TeacherLayout from '../components/TeacherLayout'
 import LoginPage from '../pages/auth/login'
 import RegisterPage from '../pages/auth/register'
-import StudentChatPage from '../pages/student/chat'
-import StudentAssignmentsPage from '../pages/student/assignments'
-import StudentAssignmentDetailPage from '../pages/student/assignments/detail'
-import StudentSummariesPage from '../pages/student/summaries'
-import StudentLearningPlansPage from '../pages/student/learning-plans'
-import TeacherAssignmentsPage from '../pages/teacher/assignments'
-import TeacherAssignmentCreatePage from '../pages/teacher/assignments/create'
-import TeacherAssignmentDetailPage from '../pages/teacher/assignments/detail'
-import TeacherGradingPage from '../pages/teacher/grading'
-import TeacherAnalyzePage from '../pages/teacher/analyze'
+import StudentCoursePage from '../pages/student/courses'
+import TeacherCoursePage from '../pages/teacher/courses'
 
 const router = createBrowserRouter([
   // 公开路由（无需登录）
@@ -30,16 +23,18 @@ const router = createBrowserRouter([
     path: '/student',
     element: (
       <AuthGuard role="student">
-        <Layout />
+        <StudentLayout />
       </AuthGuard>
     ),
     children: [
-      { index: true, element: <Navigate to="/student/chat" replace /> },
-      { path: 'chat', element: <StudentChatPage /> },
-      { path: 'assignments', element: <StudentAssignmentsPage /> },
-      { path: 'assignments/:assignmentId', element: <StudentAssignmentDetailPage /> },
-      { path: 'summaries', element: <StudentSummariesPage /> },
-      { path: 'learning-plans', element: <StudentLearningPlansPage /> },
+      {
+        index: true,
+        element: <StudentCoursePage />,
+      },
+      {
+        path: 'courses/:courseId',
+        element: <StudentCoursePage />,
+      },
     ],
   },
 
@@ -48,16 +43,18 @@ const router = createBrowserRouter([
     path: '/teacher',
     element: (
       <AuthGuard role="teacher">
-        <Layout />
+        <TeacherLayout />
       </AuthGuard>
     ),
     children: [
-      { index: true, element: <Navigate to="/teacher/assignments" replace /> },
-      { path: 'assignments', element: <TeacherAssignmentsPage /> },
-      { path: 'assignments/create', element: <TeacherAssignmentCreatePage /> },
-      { path: 'assignments/:assignmentId', element: <TeacherAssignmentDetailPage /> },
-      { path: 'grading', element: <TeacherGradingPage /> },
-      { path: 'analyze', element: <TeacherAnalyzePage /> },
+      {
+        index: true,
+        element: <TeacherCoursePage />,
+      },
+      {
+        path: 'courses/:courseId',
+        element: <TeacherCoursePage />,
+      },
     ],
   },
 

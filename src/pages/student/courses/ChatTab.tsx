@@ -1,19 +1,52 @@
-import { useState, useRef, useEffect, type FormEvent } from 'react'
-import { sendMessage } from '../../../api/chat'
-import type { ChatMessage } from '../../../types/api'
+import { useState, useRef, useEffect, useCallback, type FormEvent } from 'react'
+import { sendMessage, getChatSessions, getSessionMessages } from '../../../api/chat'
+import type { ChatMessage, ChatSessionItem } from '../../../types/api'
 
-export default function StudentChatPage() {
+interface Props {
+  courseId: string
+}
+
+export default function ChatTab({ courseId }: Props) {
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [question, setQuestion] = useState('')
-  const [course, setCourse] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [sessions, setSessions] = useState<ChatSessionItem[]>([])
+  const [showHistory, setShowHistory] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  // 加载会话列表
+  const loadSessions = useCallback(async () => {
+    try {
+      const res = await getChatSessions(courseId)
+      if (res.success) setSessions(res.data.items)
+    } catch {
+      // ignore
+    }
+  }, [courseId])
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadSessions()
+  }, [loadSessions])
+
+  // 加载历史消息
+  const loadSession = async (sid: string) => {
+    setSessionId(sid)
+    setMessages([])
+    setShowHistory(false)
+    try {
+      const res = await getSessionMessages(courseId, sid)
+      if (res.success) setMessages(res.data.messages)
+    } catch {
+      // ignore
+    }
+  }
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -31,9 +64,8 @@ export default function StudentChatPage() {
     setQuestion('')
 
     try {
-      const res = await sendMessage({
+      const res = await sendMessage(courseId, {
         question: userMsg.content,
-        course: course.trim() || undefined,
         session_id: sessionId || undefined,
       })
       if (res.success) {
@@ -42,9 +74,13 @@ export default function StudentChatPage() {
           id: `temp_ai_${Date.now()}`,
           role: 'assistant',
           content: res.data.answer,
+          rag_used: res.data.rag_used,
+          references: res.data.references,
           created_at: new Date().toISOString(),
         }
         setMessages((prev) => [...prev, aiMsg])
+        // 刷新会话列表
+        loadSessions()
       }
     } catch {
       setError('发送失败，请重试')
@@ -54,25 +90,55 @@ export default function StudentChatPage() {
     }
   }
 
+  const startNewChat = () => {
+    setSessionId(null)
+    setMessages([])
+    setShowHistory(false)
+  }
+
   return (
-    <div className="mx-auto flex h-[calc(100vh-8rem)] max-w-3xl flex-col">
-      <div className="mb-4 shrink-0">
-        <h1 className="text-xl font-semibold text-slate-800">💬 AI 智能问答</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          向 AI 学习伴侣提问，获取学习建议和解答
-        </p>
+    <div className="flex flex-col" style={{ height: 'calc(100vh - 16rem)' }}>
+      {/* 顶部操作栏 */}
+      <div className="mb-3 flex shrink-0 items-center justify-between">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={startNewChat}
+            className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-600 transition-colors hover:bg-slate-100"
+          >
+            ＋ 新对话
+          </button>
+          <button
+            onClick={() => setShowHistory(!showHistory)}
+            className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-600 transition-colors hover:bg-slate-100"
+          >
+            📋 历史 ({sessions.length})
+          </button>
+        </div>
+        {sessionId && (
+          <span className="text-xs text-slate-400">会话: {sessionId}</span>
+        )}
       </div>
 
-      {/* 课程输入 */}
-      <div className="mb-3 shrink-0">
-        <input
-          type="text"
-          value={course}
-          onChange={(e) => setCourse(e.target.value)}
-          className="w-full max-w-xs rounded-lg border border-slate-300 px-3 py-2 text-sm transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
-          placeholder="课程名称（可选）"
-        />
-      </div>
+      {/* 历史会话列表 */}
+      {showHistory && sessions.length > 0 && (
+        <div className="mb-3 shrink-0 rounded-lg border border-slate-200 bg-white p-2 max-h-48 overflow-y-auto">
+          {sessions.map((s) => (
+            <button
+              key={s.id}
+              onClick={() => loadSession(s.id)}
+              className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-slate-50 ${
+                s.id === sessionId ? 'bg-blue-50' : ''
+              }`}
+            >
+              <p className="font-medium text-slate-700 truncate">{s.last_question}</p>
+              <p className="text-xs text-slate-400">
+                {s.message_count} 条消息 ·{' '}
+                {new Date(s.updated_at).toLocaleDateString('zh-CN')}
+              </p>
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* 消息列表 */}
       <div className="flex-1 overflow-y-auto rounded-lg border border-slate-200 bg-white p-4">
@@ -84,8 +150,8 @@ export default function StudentChatPage() {
               <div className="mt-4 flex flex-wrap justify-center gap-2">
                 {[
                   '进程和线程有什么区别？',
-                  '什么是特征值和特征向量？',
-                  '如何高效备考期末考试？',
+                  '什么是虚拟内存？',
+                  '如何理解死锁的四个必要条件？',
                 ].map((q) => (
                   <button
                     key={q}
@@ -113,6 +179,16 @@ export default function StudentChatPage() {
                 }`}
               >
                 <p className="whitespace-pre-wrap">{msg.content}</p>
+                {msg.rag_used && msg.references && msg.references.length > 0 && (
+                  <div className="mt-2 border-t border-slate-200 pt-2">
+                    <p className="text-xs font-medium text-slate-500">📚 参考材料：</p>
+                    {msg.references.map((ref, i) => (
+                      <p key={i} className="text-xs text-slate-400">
+                        {ref.section_title} · {ref.file_name}
+                      </p>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           ))}

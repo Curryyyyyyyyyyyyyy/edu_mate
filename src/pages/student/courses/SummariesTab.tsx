@@ -7,7 +7,11 @@ import {
 } from '../../../api/summaries'
 import type { SummaryListItem, SummaryDetail } from '../../../types/api'
 
-export default function StudentSummariesPage() {
+interface Props {
+  courseId: string
+}
+
+export default function SummariesTab({ courseId }: Props) {
   const [items, setItems] = useState<SummaryListItem[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshKey, setRefreshKey] = useState(0)
@@ -15,20 +19,17 @@ export default function StudentSummariesPage() {
   const [error, setError] = useState('')
   const [creating, setCreating] = useState(false)
 
-  // 创建表单
   const [title, setTitle] = useState('')
-  const [course, setCourse] = useState('')
   const [sourceText, setSourceText] = useState('')
   const [summaryType, setSummaryType] = useState<string>('structured')
 
-  // 展开详情
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true)
-    getSummaries()
+    getSummaries(courseId)
       .then((res) => {
         if (!cancelled && res.success) setItems(res.data.items)
       })
@@ -38,7 +39,7 @@ export default function StudentSummariesPage() {
     return () => {
       cancelled = true
     }
-  }, [refreshKey])
+  }, [courseId, refreshKey])
 
   const handleCreate = async (e: FormEvent) => {
     e.preventDefault()
@@ -49,14 +50,12 @@ export default function StudentSummariesPage() {
     setError('')
     setCreating(true)
     try {
-      await createSummary({
+      await createSummary(courseId, {
         title: title.trim(),
-        course: course.trim() || undefined,
         source_text: sourceText.trim(),
         summary_type: summaryType as 'structured' | 'brief' | 'review',
       })
       setTitle('')
-      setCourse('')
       setSourceText('')
       setShowCreate(false)
       setRefreshKey((k) => k + 1)
@@ -69,22 +68,25 @@ export default function StudentSummariesPage() {
 
   const handleDelete = async (id: string) => {
     if (!confirm('确定要删除这条总结吗？')) return
-    await deleteSummary(id)
-    setRefreshKey((k) => k + 1)
+    try {
+      await deleteSummary(courseId, id)
+      setRefreshKey((k) => k + 1)
+    } catch {
+      // ignore
+    }
   }
 
   return (
-    <div className="mx-auto max-w-4xl">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold text-slate-800">📊 知识总结</h1>
-          <p className="mt-1 text-sm text-slate-500">对课堂笔记和资料进行 AI 结构化总结</p>
-        </div>
+    <div>
+      <div className="mb-4 flex items-center justify-between">
+        <p className="text-sm text-slate-500">
+          共 {items.length} 条知识总结
+        </p>
         <button
           onClick={() => setShowCreate(!showCreate)}
           className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
         >
-          {showCreate ? '取消' : '+ 新建总结'}
+          {showCreate ? '取消' : '＋ 新建总结'}
         </button>
       </div>
 
@@ -107,13 +109,6 @@ export default function StudentSummariesPage() {
               placeholder="总结标题 *"
               className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
             />
-            <input
-              type="text"
-              value={course}
-              onChange={(e) => setCourse(e.target.value)}
-              placeholder="课程名称（可选）"
-              className="w-48 rounded-lg border border-slate-300 px-3 py-2 text-sm transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
-            />
             <select
               value={summaryType}
               onChange={(e) => setSummaryType(e.target.value)}
@@ -121,7 +116,7 @@ export default function StudentSummariesPage() {
             >
               <option value="structured">结构化总结</option>
               <option value="brief">简要摘要</option>
-              <option value="review">复习清单</option>
+              <option value="review">复习提纲</option>
             </select>
           </div>
           <textarea
@@ -157,7 +152,7 @@ export default function StudentSummariesPage() {
       ) : items.length === 0 ? (
         <div className="rounded-lg border border-slate-200 bg-white px-6 py-12 text-center">
           <p className="text-4xl">📭</p>
-          <p className="mt-2 text-sm text-slate-500">暂无知识总结，点击上方按钮创建</p>
+          <p className="mt-2 text-sm text-slate-500">暂无知识总结</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -175,7 +170,10 @@ export default function StudentSummariesPage() {
                 <div>
                   <h3 className="font-medium text-slate-800">{item.title}</h3>
                   <p className="mt-0.5 text-sm text-slate-500">
-                    {item.course || '未分类'} ·{' '}
+                    {item.section_title || '课程总结'} ·{' '}
+                    {item.rag_used && (
+                      <span className="text-green-600">RAG · </span>
+                    )}
                     {new Date(item.created_at).toLocaleDateString('zh-CN')}
                   </p>
                 </div>
@@ -195,7 +193,7 @@ export default function StudentSummariesPage() {
                 </div>
               </div>
               {expandedId === item.id && (
-                <ExpandedSummary id={item.id} />
+                <ExpandedSummary courseId={courseId} summaryId={item.id} />
               )}
             </div>
           ))}
@@ -205,7 +203,13 @@ export default function StudentSummariesPage() {
   )
 }
 
-function ExpandedSummary({ id }: { id: string }) {
+function ExpandedSummary({
+  courseId,
+  summaryId,
+}: {
+  courseId: string
+  summaryId: string
+}) {
   const [detail, setDetail] = useState<SummaryDetail | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -213,7 +217,7 @@ function ExpandedSummary({ id }: { id: string }) {
     let cancelled = false
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true)
-    getSummary(id)
+    getSummary(courseId, summaryId)
       .then((res) => {
         if (!cancelled && res.success) setDetail(res.data)
       })
@@ -223,7 +227,7 @@ function ExpandedSummary({ id }: { id: string }) {
     return () => {
       cancelled = true
     }
-  }, [id])
+  }, [courseId, summaryId])
 
   if (loading) {
     return (
