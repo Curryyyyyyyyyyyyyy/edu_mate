@@ -147,6 +147,7 @@ export interface SectionItem {
   description?: string
   order: number
   material_url: string | null
+  material_file_name: string | null
   assignment_count: number
   submitted_count: number
   section_score: number | null
@@ -165,6 +166,8 @@ export interface SectionDetail {
   description?: string
   order: number
   material_url: string | null
+  material_file_name: string | null
+  material_text: string | null
   assignments: SectionAssignment[]
 }
 
@@ -230,6 +233,33 @@ export interface ChatSessionListData {
   items: ChatSessionItem[]
   total: number
 }
+
+// ── SSE 流式事件类型 ──────────────────────────────────────────
+
+export type SSEEventType = 'meta' | 'delta' | 'done' | 'error'
+
+export interface SSEMetaEvent {
+  type: 'meta'
+  session_id: string
+  rag_used: boolean
+  references: Reference[]
+}
+
+export interface SSEDeltaEvent {
+  type: 'delta'
+  content: string
+}
+
+export interface SSEDoneEvent {
+  type: 'done'
+}
+
+export interface SSEErrorEvent {
+  type: 'error'
+  message: string
+}
+
+export type SSEEvent = SSEMetaEvent | SSEDeltaEvent | SSEDoneEvent | SSEErrorEvent
 
 // ── 学生端作业 ────────────────────────────────────────────────
 

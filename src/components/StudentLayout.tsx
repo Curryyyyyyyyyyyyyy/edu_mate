@@ -68,9 +68,9 @@ export default function StudentLayout() {
   const selectedId = courseId
 
   return (
-    <div className="flex min-h-screen bg-slate-50">
+    <div className="flex h-screen overflow-hidden bg-slate-50">
       {/* 侧边栏 — 课程列表 */}
-      <aside className="hidden w-64 shrink-0 border-r border-slate-200 bg-white md:flex md:flex-col">
+      <aside className="hidden w-64 shrink-0 border-r border-slate-200 bg-white md:flex md:flex-col md:min-h-0">
         {/* 顶部品牌 */}
         <div className="flex h-14 items-center gap-2 border-b border-slate-100 px-5">
           <span className="text-lg">🎓</span>
@@ -150,8 +150,8 @@ export default function StudentLayout() {
       </aside>
 
       {/* 移动端顶部栏 */}
-      <div className="flex flex-1 flex-col">
-        <header className="flex h-14 items-center gap-3 border-b border-slate-200 bg-white px-4 md:hidden">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <header className="flex h-14 shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-4 md:hidden">
           <button
             onClick={() => setMenuOpen(!menuOpen)}
             className="rounded-lg p-1.5 text-slate-600 hover:bg-slate-100"
@@ -216,8 +216,8 @@ export default function StudentLayout() {
         )}
 
         {/* 主内容 */}
-        <main className="flex-1 p-4 md:p-6 lg:p-8">
-          <Outlet context={{ courses, refreshCourses: fetchCourses }} />
+        <main className="min-h-0 flex-1 overflow-y-auto px-4 py-3 md:px-6 md:py-4 lg:px-8 lg:py-4" style={{ scrollbarGutter: 'stable' }}>
+          <Outlet context={{ courses, refreshCourses: fetchCourses, openJoinDialog: () => setJoinOpen(true) }} />
         </main>
       </div>
 

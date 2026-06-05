@@ -112,15 +112,21 @@ const store = {
 
   sections: {
     course_001: [
-      { id: 'section_001', title: '第一章：进程管理', description: '介绍进程的概念、状态转换和调度算法。', order: 1, material_url: null, assignment_count: 2, submitted_count: 1, section_score: 88 },
-      { id: 'section_002', title: '第二章：内存管理', description: '介绍内存分配、分页、分段和虚拟内存。', order: 2, material_url: null, assignment_count: 1, submitted_count: 0, section_score: null },
-      { id: 'section_003', title: '第三章：文件系统', description: '介绍文件系统结构、目录和存储管理。', order: 3, material_url: null, assignment_count: 1, submitted_count: 0, section_score: null },
+      { id: 'section_001', title: '第一章：进程管理', description: '介绍进程的概念、状态转换和调度算法。', order: 1, material_url: '/files/section_001_slides.pdf', material_file_name: 'section_001_slides.pdf', assignment_count: 2, submitted_count: 1, section_score: 88 },
+      { id: 'section_002', title: '第二章：内存管理', description: '介绍内存分配、分页、分段和虚拟内存。', order: 2, material_url: null, material_file_name: null, assignment_count: 1, submitted_count: 0, section_score: null },
+      { id: 'section_003', title: '第三章：文件系统', description: '介绍文件系统结构、目录和存储管理。', order: 3, material_url: '/files/section_003_notes.docx', material_file_name: 'section_003_notes.docx', assignment_count: 1, submitted_count: 0, section_score: null },
     ],
     course_002: [
-      { id: 'section_004', title: '第一章：线性表', description: '顺序表、链表及其操作。', order: 1, material_url: null, assignment_count: 2, submitted_count: 2, section_score: 95 },
-      { id: 'section_005', title: '第二章：树与二叉树', description: '树的定义、遍历和应用。', order: 2, material_url: null, assignment_count: 1, submitted_count: 0, section_score: null },
+      { id: 'section_004', title: '第一章：线性表', description: '顺序表、链表及其操作。', order: 1, material_url: '/files/section_004_textbook.pdf', material_file_name: 'section_004_textbook.pdf', assignment_count: 2, submitted_count: 2, section_score: 95 },
+      { id: 'section_005', title: '第二章：树与二叉树', description: '树的定义、遍历和应用。', order: 2, material_url: null, material_file_name: null, assignment_count: 1, submitted_count: 0, section_score: null },
     ],
-  } as Record<string, SectionItem[]>,
+  } as Record<string, (SectionItem & { material_file_name?: string | null })[]>,
+
+  sectionDetails: {
+    section_001: { id: 'section_001', course_id: 'course_001', title: '第一章：进程管理', description: '介绍进程的概念、状态转换和调度算法。', order: 1, material_url: '/files/section_001_slides.pdf', material_file_name: 'section_001_slides.pdf', material_text: '第一章：进程管理\n\n1.1 进程的概念\n\n进程是操作系统中的一个核心概念。进程可以定义为程序的一次执行过程，是系统进行资源分配和调度的基本单位。\n\n进程具有以下特征：\n- 动态性：进程是程序的一次执行过程，有创建、运行、消亡等状态\n- 并发性：多个进程可以同时存在于内存中，并发执行\n- 独立性：进程是能够独立运行的基本单位\n- 异步性：进程按各自独立的、不可预知的速度向前推进\n\n1.2 进程的状态\n\n进程在其生命周期中会经历多种状态：\n\n（1）就绪状态（Ready）：进程已获得除CPU之外的所有必要资源，只要获得CPU就可立即执行。\n\n（2）执行状态（Running）：进程正在CPU上运行。\n\n（3）阻塞状态（Blocked）：进程因等待某个事件而暂停执行。\n\n状态转换：\n- 就绪 → 执行：进程被调度程序选中\n- 执行 → 就绪：时间片用完或被抢占\n- 执行 → 阻塞：进程请求I/O或等待事件\n- 阻塞 → 就绪：等待的事件发生\n\n1.3 进程调度算法\n\n常见的进程调度算法包括：FCFS、SJF、时间片轮转、优先级调度、多级反馈队列。', assignments: [{ id: 'asg_001', title: '进程管理练习', due_at: '2026-06-15T23:59:00+08:00', status: 'open' as const, submitted: true, score: 88 }, { id: 'asg_002', title: '调度算法分析', due_at: '2026-06-20T23:59:00+08:00', status: 'open' as const, submitted: false, score: null }] },
+    section_003: { id: 'section_003', course_id: 'course_001', title: '第三章：文件系统', description: '介绍文件系统结构、目录和存储管理。', order: 3, material_url: '/files/section_003_notes.docx', material_file_name: 'section_003_notes.docx', material_text: '第三章：文件系统\n\n3.1 文件的概念\n\n文件是具有符号名的一组相关信息的集合。文件系统将底层存储设备的物理特性隐藏起来，为用户提供统一的数据访问方式。\n\n3.2 文件系统的层次结构\n\n- 用户接口层\n- 文件目录系统\n- 存取控制验证层\n- 逻辑文件系统\n- 物理文件系统\n\n3.3 目录结构\n\n常见的目录结构有：单级目录、两级目录、树形目录、无环图目录。\n\n3.4 文件存储空间管理\n\n常见方法：空闲表法、空闲链表法、位示图法、成组链接法。', assignments: [{ id: 'asg_006', title: '文件系统练习', due_at: '2026-06-25T23:59:00+08:00', status: 'open' as const, submitted: false, score: null }] },
+    section_004: { id: 'section_004', course_id: 'course_002', title: '第一章：线性表', description: '顺序表、链表及其操作。', order: 1, material_url: '/files/section_004_textbook.pdf', material_file_name: 'section_004_textbook.pdf', material_text: '第一章：线性表\n\n1.1 线性表的定义\n\n线性表是最基本、最简单、最常用的一种数据结构。一个线性表是n个具有相同特性的数据元素的有限序列。\n\n特点：有且仅有一个头结点和尾结点；除头结点外每个结点有唯一前驱；除尾结点外每个结点有唯一后继。\n\n1.2 顺序表\n\n顺序表用一组地址连续的存储单元依次存储数据元素。\n\n特点：可随机存取O(1)，但插入删除需移动大量元素O(n)。\n\n1.3 链表\n\n链表用一组任意的存储单元存储数据元素，通过指针链接。\n\n特点：插入删除O(1)，但不能随机存取需遍历。常见类型：单链表、双向链表、循环链表。', assignments: [{ id: 'asg_004', title: '链表操作练习', due_at: '2026-06-18T23:59:00+08:00', status: 'open' as const, submitted: true, score: 95 }, { id: 'asg_005', title: '顺序表与链表对比', due_at: '2026-06-22T23:59:00+08:00', status: 'open' as const, submitted: true, score: 95 }] },
+  } as Record<string, { id: string; course_id: string; title: string; description: string; order: number; material_url: string | null; material_file_name: string | null; material_text: string; assignments: { id: string; title: string; due_at: string; status: 'open' | 'closed'; submitted: boolean; score: number | null }[] }>,
 
   assignments: {
     course_001: [
@@ -250,6 +256,10 @@ export function mockHandle(method: string, url: string, data?: unknown): Promise
   }
 
   // ── 小节 ──────────────────────────────────────────────
+  const sectionDetailMatch = path.match(/^\/api\/student\/courses\/([^/]+)\/sections\/([^/]+)$/)
+  if (method === 'GET' && sectionDetailMatch) {
+    return handleGetSectionDetail(sectionDetailMatch[1], sectionDetailMatch[2])
+  }
   const sectionsMatch = path.match(/^\/api\/student\/courses\/([^/]+)\/sections$/)
   if (method === 'GET' && sectionsMatch) {
     return handleGetSections(sectionsMatch[1])
@@ -476,6 +486,13 @@ async function handleGetSections(courseId: string): Promise<ApiResponse<{ course
   return { success: true, data: { course_id: courseId, items, total: items.length }, message: 'ok' }
 }
 
+async function handleGetSectionDetail(courseId: string, sectionId: string): Promise<ApiResponse<unknown>> {
+  await delay()
+  const detail = store.sectionDetails[sectionId]
+  if (!detail || detail.course_id !== courseId) throw { response: { status: 404 } }
+  return { success: true, data: detail, message: 'ok' }
+}
+
 async function handleSendMessage(courseId: string, body: { question: string; session_id?: string }): Promise<ApiResponse<ChatData>> {
   await delay(800)
   const sessionId = body.session_id || uid('session')
@@ -553,16 +570,35 @@ async function handleGetAssignmentDetail(courseId: string, asgId: string): Promi
 
 async function handleSubmitAssignment(_courseId: string, asgId: string, data: unknown): Promise<ApiResponse<SubmissionData>> {
   await delay(400)
-  const fd = data as FormData
-  const content = fd.get('content') as string || ''
+  let submitType: 'text' | 'file' = 'text'
+  let content = ''
+
+  if (data instanceof FormData) {
+    // FormData 提交（文件或文本）
+    const fd = data
+    const typeField = fd.get('submit_type') as string
+    submitType = typeField === 'file' ? 'file' : 'text'
+    if (submitType === 'file') {
+      const file = fd.get('file') as File | null
+      content = file ? `[文件上传] ${file.name} (${(file.size / 1024).toFixed(1)} KB)` : ''
+    } else {
+      content = (fd.get('content') as string) || ''
+    }
+  } else if (typeof data === 'object' && data !== null) {
+    // JSON 提交（文本模式）
+    const obj = data as Record<string, string>
+    submitType = obj.submit_type === 'file' ? 'file' : 'text'
+    content = obj.content || ''
+  }
+
   const sub = {
-    id: uid('submission'), assignment_id: asgId, submit_type: 'text' as const, content,
+    id: uid('submission'), assignment_id: asgId, submit_type: submitType as 'text' | 'file', content,
     submitted_at: new Date().toISOString(),
     score: null, ai_score: null, comments: null, deductions: [], suggestions: [],
     teacher_comment: null, graded_at: null,
   }
   store.submissions[asgId] = sub
-  return { success: true, data: { id: sub.id, assignment_id: asgId, student_id: STUDENT.id, submit_type: 'text', submitted_at: sub.submitted_at, status: 'submitted' }, message: 'submitted' }
+  return { success: true, data: { id: sub.id, assignment_id: asgId, student_id: STUDENT.id, submit_type: submitType, submitted_at: sub.submitted_at, status: 'submitted' }, message: 'submitted' }
 }
 
 async function handleGetMySubmission(_courseId: string, asgId: string): Promise<ApiResponse<MySubmissionData | null>> {
@@ -674,16 +710,51 @@ async function handleUpdatePlanStatus(_courseId: string, planId: string, data: u
   return { success: true, data: { id: planId, status: (data as Record<string, string>).status }, message: 'updated' }
 }
 
-async function handleMarkTaskComplete(_courseId: string, _planId: string, data: unknown): Promise<ApiResponse<PlanProgress['tasks'][number]>> {
+async function handleMarkTaskComplete(_courseId: string, planId: string, data: unknown): Promise<ApiResponse<PlanProgress['tasks'][number]>> {
   await delay()
   const body = data as Record<string, unknown>
+  const day = body.day as number
+  const completed = body.completed as boolean
+  const feedback = body.feedback as string || null
+
+  // 持久化进度到 store
+  if (!store.planProgress[planId]) {
+    store.planProgress[planId] = { plan_id: planId, version: 1, total_days: 0, completed_days: 0, completion_rate: 0, tasks: [] }
+  }
+  const progress = store.planProgress[planId]
+  const existing = progress.tasks.find((t) => t.day === day)
+  if (existing) {
+    existing.completed = completed
+    existing.feedback = feedback
+    existing.completed_at = completed ? new Date().toISOString() : null
+  } else {
+    // 从对应的计划详情里取任务描述
+    let plan: LearningPlanData | undefined
+    for (const plans of Object.values(store.learningPlans)) {
+      plan = plans.find((p) => p.id === planId)
+      if (plan) break
+    }
+    const planDay = plan?.plan?.find((d: { day: number }) => d.day === day)
+    progress.tasks.push({
+      day,
+      task: planDay?.task || '',
+      duration_minutes: planDay?.duration_minutes || 60,
+      section_id: planDay?.section_id,
+      section_title: planDay?.section_title,
+      completed,
+      feedback,
+      completed_at: completed ? new Date().toISOString() : null,
+    })
+    progress.total_days = plan?.plan?.length || progress.total_days
+  }
+  progress.completed_days = progress.tasks.filter((t) => t.completed).length
+  progress.completion_rate = progress.total_days > 0 ? progress.completed_days / progress.total_days : 0
+
   return {
     success: true,
     data: {
-      day: body.day as number, task: '', duration_minutes: 60,
-      completed: body.completed as boolean,
-      feedback: body.feedback as string || null,
-      completed_at: new Date().toISOString(),
+      day, task: existing?.task || '', duration_minutes: existing?.duration_minutes || 60,
+      completed, feedback, completed_at: completed ? new Date().toISOString() : null,
     },
     message: 'updated',
   }

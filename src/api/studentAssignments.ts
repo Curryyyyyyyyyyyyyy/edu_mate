@@ -28,18 +28,36 @@ export async function getAssignmentDetail(
   return res as unknown as ApiResponse<StudentAssignmentDetail>
 }
 
-export async function submitAssignment(
+/**
+ * 提交作业 — 文本模式
+ */
+export async function submitAssignmentText(
   courseId: string,
   assignmentId: string,
   content: string,
 ): Promise<ApiResponse<SubmissionData>> {
+  const res = await request.post(
+    `/student/courses/${courseId}/assignments/${assignmentId}/submit`,
+    { submit_type: 'text', content },
+  )
+  return res as unknown as ApiResponse<SubmissionData>
+}
+
+/**
+ * 提交作业 — 文件模式
+ */
+export async function submitAssignmentFile(
+  courseId: string,
+  assignmentId: string,
+  file: File,
+): Promise<ApiResponse<SubmissionData>> {
   const formData = new FormData()
-  formData.append('submit_type', 'text')
-  formData.append('content', content)
+  formData.append('submit_type', 'file')
+  formData.append('file', file)
+  // 不手动设 Content-Type，让浏览器自动带 boundary
   const res = await request.post(
     `/student/courses/${courseId}/assignments/${assignmentId}/submit`,
     formData,
-    { headers: { 'Content-Type': 'multipart/form-data' } },
   )
   return res as unknown as ApiResponse<SubmissionData>
 }

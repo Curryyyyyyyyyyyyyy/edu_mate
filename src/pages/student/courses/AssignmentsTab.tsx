@@ -1,8 +1,9 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent, type DragEvent, type FormEvent } from 'react'
 import {
   getAssignments,
   getAssignmentDetail,
-  submitAssignment,
+  submitAssignmentText,
+  submitAssignmentFile,
   getMySubmission,
 } from '../../../api/studentAssignments'
 import type {
@@ -15,16 +16,25 @@ interface Props {
   courseId: string
 }
 
+const ALLOWED_EXTENSIONS = ['.pdf', '.txt', '.doc', '.docx']
+const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10 MB
+
 export default function AssignmentsTab({ courseId }: Props) {
   const [items, setItems] = useState<StudentAssignmentItem[]>([])
   const [loading, setLoading] = useState(true)
   const [filterStatus, setFilterStatus] = useState('')
   const [selected, setSelected] = useState<StudentAssignmentDetail | null>(null)
   const [submission, setSubmission] = useState<MySubmissionData | null>(null)
+
+  // 提交相关状态
   const [content, setContent] = useState('')
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [dragOver, setDragOver] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
+
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -44,10 +54,15 @@ export default function AssignmentsTab({ courseId }: Props) {
     }
   }, [courseId, filterStatus])
 
-  const openDetail = async (assignmentId: string) => {
+  const resetSubmitState = () => {
     setError('')
     setSuccessMsg('')
     setContent('')
+    setSelectedFile(null)
+  }
+
+  const openDetail = async (assignmentId: string) => {
+    resetSubmitState()
     try {
       const [dRes, sRes] = await Promise.all([
         getAssignmentDetail(courseId, assignmentId),
@@ -64,16 +79,69 @@ export default function AssignmentsTab({ courseId }: Props) {
     }
   }
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault()
-    if (!selected || !content.trim()) {
-      setError('请输入作业内容')
+  const validateFile = (file: File): string | null => {
+    const ext = '.' + file.name.split('.').pop()?.toLowerCase()
+    if (!ALLOWED_EXTENSIONS.includes(ext)) {
+      return `不支持的文件类型，仅支持：${ALLOWED_EXTENSIONS.join(', ')}`
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      return '文件大小超过 10 MB 限制'
+    }
+    return null
+  }
+
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    setError('')
+    const file = e.target.files?.[0]
+    if (!file) return
+    const err = validateFile(file)
+    if (err) {
+      setError(err)
       return
     }
+    setSelectedFile(file)
+  }
+
+  const handleDrop = (e: DragEvent) => {
+    e.preventDefault()
+    setDragOver(false)
+    const file = e.dataTransfer.files?.[0]
+    if (!file) return
+    const err = validateFile(file)
+    if (err) {
+      setError(err)
+      return
+    }
+    setSelectedFile(file)
+  }
+
+  const clearFile = () => {
+    setSelectedFile(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!selected) return
+
     setError('')
+    setSuccessMsg('')
+
+    // 文件优先：有文件则提交文件，否则提交文本
+    if (!selectedFile && !content.trim()) {
+      setError('请输入作业内容或上传文件')
+      return
+    }
+
     setSubmitting(true)
     try {
-      const res = await submitAssignment(courseId, selected.id, content.trim())
+      let res
+      if (selectedFile) {
+        res = await submitAssignmentFile(courseId, selected.id, selectedFile)
+      } else {
+        res = await submitAssignmentText(courseId, selected.id, content.trim())
+      }
+
       if (res.success) {
         setSubmission({
           id: res.data.id,
@@ -92,12 +160,13 @@ export default function AssignmentsTab({ courseId }: Props) {
         })
         setSuccessMsg('作业提交成功！')
         setContent('')
+        setSelectedFile(null)
         // 刷新列表
         getAssignments(courseId, {
           status: filterStatus || undefined,
         })
-          .then((res) => {
-            if (res.success) setItems(res.data.items)
+          .then((r) => {
+            if (r.success) setItems(r.data.items)
           })
           .catch(() => {})
       }
@@ -119,7 +188,10 @@ export default function AssignmentsTab({ courseId }: Props) {
           onClick={() => setSelected(null)}
           className="mb-4 text-sm text-blue-600 hover:text-blue-700"
         >
-          ← 返回作业列表
+          <svg className="mr-1 inline-block h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+          </svg>
+          返回作业列表
         </button>
 
         <div className="rounded-lg border border-slate-200 bg-white p-6">
@@ -181,6 +253,7 @@ export default function AssignmentsTab({ courseId }: Props) {
               <p className="mt-1 text-sm text-green-600">
                 提交时间：
                 {new Date(submission.submitted_at).toLocaleString('zh-CN')}
+                {submission.submit_type === 'file' && '（文件提交）'}
               </p>
               {submission.score != null && (
                 <div className="mt-2 rounded bg-white p-3">
@@ -230,12 +303,68 @@ export default function AssignmentsTab({ courseId }: Props) {
                 </div>
               )}
 
-              <textarea
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                placeholder="请输入你的作业内容..."
-                rows={8}
-                className="mb-3 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+              {/* 富文本编辑器风格输入区 */}
+              <div className="mb-3 overflow-hidden rounded-lg border border-slate-300 transition-colors focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100">
+                {/* 工具栏 */}
+                <div className="flex items-center gap-0.5 border-b border-slate-200 bg-slate-50 px-2 py-1.5">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex items-center gap-1 rounded px-2 py-1 text-xs text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-700"
+                    title="上传文件（PDF/TXT/DOC/DOCX，最大 10 MB）"
+                  >
+                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                    </svg>
+                    上传文件
+                  </button>
+                  <span className="mx-0.5 h-4 w-px bg-slate-300" />
+                  <span className="px-1 text-xs text-slate-400">
+                    支持 PDF、TXT、DOC、DOCX ≤ 10 MB
+                  </span>
+                </div>
+
+                {/* 已选文件标签 */}
+                {selectedFile && (
+                  <div
+                    onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+                    onDragLeave={() => setDragOver(false)}
+                    onDrop={handleDrop}
+                    className={`flex items-center justify-between border-b border-slate-200 px-3 py-2 ${dragOver ? 'bg-blue-50' : 'bg-slate-50/50'}`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">
+                        {selectedFile.name.endsWith('.pdf') ? '📕' : selectedFile.name.endsWith('.txt') ? '📄' : '📘'}
+                      </span>
+                      <span className="text-sm font-medium text-slate-700">{selectedFile.name}</span>
+                      <span className="text-xs text-slate-400">({(selectedFile.size / 1024).toFixed(1)} KB)</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={clearFile}
+                      className="rounded p-1 text-xs text-slate-400 transition-colors hover:bg-red-50 hover:text-red-500"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
+
+                {/* 文本输入区 */}
+                <textarea
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  placeholder={selectedFile ? '可同时输入文字说明（将优先提交文件）...' : '请输入你的作业内容，或点击上方工具栏上传文件...'}
+                  rows={6}
+                  className="w-full resize-y border-0 bg-white px-3 py-2.5 text-sm placeholder:text-slate-400 focus:outline-none"
+                />
+              </div>
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,.txt,.doc,.docx"
+                onChange={handleFileChange}
+                className="hidden"
               />
 
               <button
@@ -290,7 +419,7 @@ export default function AssignmentsTab({ courseId }: Props) {
         </div>
       ) : items.length === 0 ? (
         <div className="rounded-lg border border-slate-200 bg-white px-6 py-12 text-center">
-          <p className="text-4xl">📭</p>
+          <p className="text-3xl">📭</p>
           <p className="mt-2 text-sm text-slate-500">暂无作业</p>
         </div>
       ) : (

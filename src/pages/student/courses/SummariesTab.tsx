@@ -151,7 +151,7 @@ export default function SummariesTab({ courseId }: Props) {
         </div>
       ) : items.length === 0 ? (
         <div className="rounded-lg border border-slate-200 bg-white px-6 py-12 text-center">
-          <p className="text-4xl">📭</p>
+          <p className="text-3xl">📭</p>
           <p className="mt-2 text-sm text-slate-500">暂无知识总结</p>
         </div>
       ) : (
