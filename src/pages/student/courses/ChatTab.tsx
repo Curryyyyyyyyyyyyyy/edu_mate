@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback, type FormEvent } from 'react'
 import { useSearchParams } from 'react-router'
 import { streamMessage, mockStreamMessage, getChatSessions, getSessionMessages } from '../../../api/chat'
-import type { ChatMessage, ChatSessionItem, SSEEvent } from '../../../types/api'
+import type { ChatMessage, ChatSessionItem } from '../../../types/api'
 import Markdown from '../../../components/Markdown'
 
 const isMock = import.meta.env.VITE_USE_MOCK === 'true'

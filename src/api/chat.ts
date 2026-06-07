@@ -128,7 +128,7 @@ export async function* streamMessage(
  * Mock 模式下的模拟流式 — 用 setTimeout 逐段 yield，模拟打字机效果。
  */
 export async function* mockStreamMessage(
-  courseId: string,
+  _courseId: string,
   params: { question: string; session_id?: string },
   _signal?: AbortSignal,
 ): AsyncGenerator<SSEEvent> {

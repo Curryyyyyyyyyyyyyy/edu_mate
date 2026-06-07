@@ -144,7 +144,7 @@ const store = {
   }>>,
 
   submissions: {} as Record<string, {
-    id: string; assignment_id: string; submit_type: 'text'; content: string;
+    id: string; assignment_id: string; submit_type: 'text' | 'file'; content: string;
     submitted_at: string; score: number | null; ai_score: number | null;
     comments: string | null; deductions: { point: string; minus: number }[];
     suggestions: string[]; teacher_comment: string | null; graded_at: string | null;
@@ -872,7 +872,7 @@ async function handleTeacherCreateSection(courseId: string, data: unknown): Prom
   const item: SectionItem & { course_id: string; created_at: string } = {
     id: uid('section'), course_id: courseId,
     title: body.title, description: body.description, order: Number(body.order) || 0,
-    material_url: null, assignment_count: 0, submitted_count: 0, section_score: null,
+    material_url: null, material_file_name: null, assignment_count: 0, submitted_count: 0, section_score: null,
     created_at: new Date().toISOString(),
   }
   if (!store.sections[courseId]) store.sections[courseId] = []

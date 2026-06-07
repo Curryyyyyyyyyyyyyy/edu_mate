@@ -1,5 +1,12 @@
 import request from '../utils/request'
-import type { ApiResponse, LoginData, RegisterData, UserInfo } from '../types/api'
+import type {
+  ApiResponse,
+  ChangePasswordRequest,
+  LoginData,
+  RegisterData,
+  UpdateProfileRequest,
+  UserInfo,
+} from '../types/api'
 
 export async function login(
   username: string,
@@ -31,4 +38,18 @@ export async function registerTeacher(payload: {
 export async function getMe(): Promise<ApiResponse<UserInfo>> {
   const res = await request.get('/auth/me')
   return res as unknown as ApiResponse<UserInfo>
+}
+
+export async function updateMe(
+  data: UpdateProfileRequest,
+): Promise<ApiResponse<UserInfo>> {
+  const res = await request.patch('/auth/me', data)
+  return res as unknown as ApiResponse<UserInfo>
+}
+
+export async function changePassword(
+  data: ChangePasswordRequest,
+): Promise<ApiResponse<Record<string, never>>> {
+  const res = await request.post('/auth/change-password', data)
+  return res as unknown as ApiResponse<Record<string, never>>
 }

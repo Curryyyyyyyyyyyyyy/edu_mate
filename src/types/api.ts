@@ -585,3 +585,367 @@ export interface AnalyzeReportData {
   teaching_suggestions: string[]
   created_at: string
 }
+
+export interface PageParams {
+  page?: number
+  page_size?: number
+}
+
+export interface UpdateProfileRequest {
+  bio?: string
+  interests?: string[]
+  career_direction?: string
+  class_name?: string
+}
+
+export interface ChangePasswordRequest {
+  old_password: string
+  new_password: string
+}
+
+export interface AnnouncementCreateRequest {
+  title: string
+  content: string
+  is_pinned?: boolean
+}
+
+export type AnnouncementUpdateRequest = Partial<AnnouncementCreateRequest>
+
+export interface AnnouncementDetail {
+  id: string
+  course_id: string
+  title: string
+  content: string
+  is_pinned: boolean
+  is_read?: boolean
+  created_at: string
+  updated_at?: string
+}
+
+export interface TeacherAnnouncementItem {
+  id: string
+  title: string
+  is_pinned: boolean
+  read_count: number
+  total_students: number
+  created_at: string
+}
+
+export interface StudentAnnouncementItem {
+  id: string
+  title: string
+  content: string
+  is_pinned: boolean
+  is_read: boolean
+  created_at: string
+}
+
+export interface TeacherAnnouncementListData {
+  course_id: string
+  items: TeacherAnnouncementItem[]
+  total: number
+}
+
+export interface StudentAnnouncementListData {
+  course_id: string
+  unread_count: number
+  items: StudentAnnouncementItem[]
+  total: number
+}
+
+export interface DiscussionAuthor {
+  id: string
+  name: string
+  role: Role
+}
+
+export type DiscussionStatus = 'open' | 'closed'
+
+export interface DiscussionCreateRequest {
+  title: string
+  content: string
+  section_id?: string
+}
+
+export interface DiscussionItem {
+  id: string
+  course_id?: string
+  section_id?: string
+  section_title?: string
+  title: string
+  content?: string
+  status: DiscussionStatus
+  reply_count: number
+  created_by: DiscussionAuthor
+  last_reply_at?: string
+  created_at: string
+}
+
+export interface DiscussionListData {
+  course_id: string
+  items: DiscussionItem[]
+  total: number
+}
+
+export interface DiscussionReply {
+  id: string
+  discussion_id?: string
+  content: string
+  author: DiscussionAuthor
+  is_teacher: boolean
+  created_at: string
+}
+
+export interface DiscussionDetail extends Omit<DiscussionItem, 'content'> {
+  course_id: string
+  content: string
+  replies: {
+    items: DiscussionReply[]
+    total: number
+    page: number
+    page_size: number
+  }
+}
+
+export type QuestionVisibility = 'public' | 'private'
+export type QuestionStatus = 'unanswered' | 'answered'
+
+export interface QuestionCreateRequest {
+  title: string
+  content?: string
+  visibility: QuestionVisibility
+  section_id?: string
+}
+
+export interface QuestionUser {
+  id: string
+  name: string
+}
+
+export interface QuestionAnswer {
+  content: string
+  answered_by: QuestionUser
+  answered_at: string
+}
+
+export interface QuestionItem {
+  id: string
+  course_id?: string
+  section_id?: string
+  section_title?: string
+  title: string
+  content?: string
+  visibility: QuestionVisibility
+  status: QuestionStatus
+  asked_by: QuestionUser
+  answer?: QuestionAnswer
+  created_at: string
+  answered_at?: string
+}
+
+export interface QuestionListData {
+  course_id: string
+  items: QuestionItem[]
+  total: number
+}
+
+export interface QuestionAnswerData {
+  question_id: string
+  answer: QuestionAnswer
+}
+
+export type QuizQuestionType = 'single_choice' | 'multi_choice' | 'true_false' | 'short_answer'
+export type QuizStatus = 'open' | 'closed'
+export type QuizAttemptStatus = 'in_progress' | 'submitted'
+
+export interface QuizOption {
+  key: string
+  text: string
+}
+
+export interface QuizQuestionCreate {
+  question_type: QuizQuestionType
+  content: string
+  options?: QuizOption[]
+  correct_answer: string
+  explanation?: string
+  score?: number
+  order?: number
+}
+
+export interface QuizCreateRequest {
+  title: string
+  description?: string
+  section_id?: string
+  time_limit_minutes?: number
+  questions: QuizQuestionCreate[]
+}
+
+export interface TeacherQuizItem {
+  id: string
+  title: string
+  section_id?: string
+  status: QuizStatus
+  question_count: number
+  time_limit_minutes: number | null
+  attempt_count: number
+  created_at: string
+}
+
+export interface TeacherQuizListData {
+  course_id: string
+  items: TeacherQuizItem[]
+  total: number
+}
+
+export interface QuizAttemptSummary {
+  attempt_id: string
+  student_id: string
+  student_name: string
+  total_score: number
+  full_score: number
+  submitted_at: string
+}
+
+export interface TeacherQuizAttemptsData {
+  quiz_id: string
+  attempt_count: number
+  average_score: number
+  items: QuizAttemptSummary[]
+}
+
+export interface StudentQuizItem {
+  id: string
+  title: string
+  section_id?: string
+  question_count: number
+  time_limit_minutes: number | null
+  attempt_status: QuizAttemptStatus | null
+  score: number | null
+}
+
+export interface StudentQuizListData {
+  course_id: string
+  items: StudentQuizItem[]
+  total: number
+}
+
+export interface StudentQuizQuestion {
+  id: string
+  question_type: QuizQuestionType
+  content: string
+  options?: QuizOption[]
+  score: number
+  order: number
+}
+
+export interface StudentQuizDetail {
+  id: string
+  course_id: string
+  title: string
+  description?: string
+  section_id?: string
+  time_limit_minutes: number | null
+  questions: StudentQuizQuestion[]
+}
+
+export interface QuizStartData {
+  attempt_id: string
+  started_at: string
+}
+
+export interface QuizSubmitRequest {
+  answers: {
+    question_id: string
+    answer: string
+  }[]
+}
+
+export interface QuizAnswerResult {
+  question_id: string
+  is_correct: boolean
+  score: number
+  ai_feedback: string | null
+  correct_answer: string
+  explanation: string | null
+}
+
+export interface QuizResultData {
+  attempt_id: string
+  total_score: number
+  full_score: number
+  results: QuizAnswerResult[]
+}
+
+export interface ScoreRecord {
+  assignment_id: string
+  assignment_title: string
+  section_title?: string
+  full_score: number
+  score: number
+  ai_score: number | null
+  deductions?: Deduction[]
+  suggestions?: string[]
+  teacher_comment: string | null
+  graded_at: string
+}
+
+export interface StudentCourseScoresData {
+  course_id: string
+  course_name: string
+  total_score: number
+  rank: number
+  total_students: number
+  records: ScoreRecord[]
+}
+
+export interface StudentScoresItem {
+  course_id: string
+  course_name: string
+  total_score: number
+  rank: number
+  total_students: number
+  graded_assignments: number
+  total_assignments: number
+}
+
+export interface StudentScoresData {
+  items: StudentScoresItem[]
+}
+
+export interface TeacherScoresData {
+  course_id: string
+  course_name: string
+  statistics: {
+    average_score: number
+    max_score: number
+    min_score: number
+    pass_rate: number
+    excellent_rate: number
+  }
+  score_distribution: {
+    '90_100': number
+    '80_89': number
+    '70_79': number
+    '60_69': number
+    below_60: number
+  }
+  items: {
+    student_id: string
+    student_name: string
+    class_name: string
+    total_score: number
+    graded_assignments: number
+    rank: number
+  }[]
+  total: number
+}
+
+export interface TeacherStudentScoresData {
+  student_id: string
+  student_name: string
+  course_id: string
+  total_score: number
+  rank: number
+  records: ScoreRecord[]
+}
