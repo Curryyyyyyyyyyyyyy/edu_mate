@@ -29,8 +29,7 @@ export interface UserInfo {
   username: string
   name: string
   role: Role
-  class_name?: string
-  profile?: UserProfile
+  extra: UserProfile & { class_name?: string }
 }
 
 export interface LoginRequest {
@@ -111,7 +110,7 @@ export interface TeacherCourseDetail {
   semester: string
   status: CourseStatus
   teacher_id: string
-  teacher_name: string
+  teacher_name?: string
   student_count: number
   section_count: number
   created_at: string
@@ -472,9 +471,17 @@ export interface GradeResultItem {
   confirmed: boolean
 }
 
+export interface GradeFailedItem {
+  submission_id: string
+  student_id?: string
+  student_name?: string
+  reason: string
+}
+
 export interface GradeResultData {
   assignment_id: string
   results: GradeResultItem[]
+  failed?: GradeFailedItem[]
 }
 
 export interface GradeConfirmRequest {
@@ -540,7 +547,14 @@ export interface TeacherSubmissionItem {
   submitted_at: string
   status: string
   score: number | null
+  graded?: boolean
   confirmed: boolean
+  content?: string | null
+  extracted_text?: string | null
+  file_url?: string | null
+  ai_score?: number | null
+  comments?: string | null
+  teacher_comment?: string | null
 }
 
 export interface TeacherSubmissionListData {
@@ -582,7 +596,7 @@ export interface AnalyzeReportData {
   suspicious_pairs: SuspiciousPair[]
   comparison_details: ComparisonDetail[]
   common_issues: string[]
-  teaching_suggestions: string[]
+  teaching_suggestions?: string[]
   created_at: string
 }
 
@@ -917,11 +931,11 @@ export interface TeacherScoresData {
   course_id: string
   course_name: string
   statistics: {
-    average_score: number
-    max_score: number
-    min_score: number
-    pass_rate: number
-    excellent_rate: number
+    average_score: number | null
+    max_score: number | null
+    min_score: number | null
+    pass_rate: number | null
+    excellent_rate: number | null
   }
   score_distribution: {
     '90_100': number
@@ -934,7 +948,7 @@ export interface TeacherScoresData {
     student_id: string
     student_name: string
     class_name: string
-    total_score: number
+    total_score: number | null
     graded_assignments: number
     rank: number
   }[]
@@ -945,7 +959,7 @@ export interface TeacherStudentScoresData {
   student_id: string
   student_name: string
   course_id: string
-  total_score: number
-  rank: number
+  total_score: number | null
+  rank: number | null
   records: ScoreRecord[]
 }

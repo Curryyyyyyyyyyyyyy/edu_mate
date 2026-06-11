@@ -25,6 +25,14 @@ export async function getTeacherAnnouncements(
   return res as unknown as ApiResponse<TeacherAnnouncementListData>
 }
 
+export async function getTeacherAnnouncement(
+  courseId: string,
+  noticeId: string,
+): Promise<ApiResponse<AnnouncementDetail & { read_count: number; total_students: number }>> {
+  const res = await request.get(`/courses/${courseId}/announcements/${noticeId}`)
+  return res as unknown as ApiResponse<AnnouncementDetail & { read_count: number; total_students: number }>
+}
+
 export async function updateAnnouncement(
   courseId: string,
   noticeId: string,

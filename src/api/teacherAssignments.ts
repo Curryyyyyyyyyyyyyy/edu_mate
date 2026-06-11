@@ -74,6 +74,8 @@ export async function gradeSubmissions(
   const res = await request.post(`/teacher/courses/${courseId}/assignments/${assignmentId}/grade`, {
     submission_ids: submissionIds,
     need_teacher_confirm: true,
+  }, {
+    timeout: 120000,
   })
   return res as unknown as ApiResponse<GradeResultData>
 }
