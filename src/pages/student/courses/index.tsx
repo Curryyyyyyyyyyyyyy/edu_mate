@@ -112,9 +112,9 @@ export default function StudentCoursePage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div className="mx-auto flex max-w-5xl flex-col h-full">
       {/* 课程头部 */}
-      <div className="mb-4">
+      <div className="mb-4 shrink-0">
         <h1 className="text-lg font-semibold text-slate-800">{course.name}</h1>
         <p className="mt-0.5 text-xs text-slate-500">
           {course.teacher_name} · {course.semester}
@@ -123,7 +123,7 @@ export default function StudentCoursePage() {
       </div>
 
       {/* Tab 导航 */}
-      <div className="mb-4 border-b border-slate-200">
+      <div className="mb-4 shrink-0 border-b border-slate-200">
         <nav className="-mb-px flex gap-0 overflow-x-auto" role="tablist">
           {TABS.map((tab) => (
             <button
@@ -144,8 +144,8 @@ export default function StudentCoursePage() {
         </nav>
       </div>
 
-      {/* Tab 内容 */}
-      <div>
+      {/* Tab 内容 — flex-1 让子组件可以撑满剩余高度 */}
+      <div className="min-h-0 flex-1">
         {activeTab === 'sections' && <CourseContentTab courseId={courseId} />}
         {activeTab === 'chat' && <ChatTab courseId={courseId} />}
         {activeTab === 'assignments' && <AssignmentsTab courseId={courseId} />}
