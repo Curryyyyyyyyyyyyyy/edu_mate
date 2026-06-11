@@ -80,7 +80,7 @@ export default function DiscussionsTab({ courseId }: Props) {
       ) : items.length === 0 ? (
         <div className="rounded-lg border border-slate-200 bg-white px-6 py-12 text-center">
           <p className="text-3xl">💬</p>
-          <p className="mt-2 text-sm text-slate-500">暂无讨论，点击上方按钮发起</p>
+          <p className="mt-2 text-sm text-slate-500">暂无讨论</p>
         </div>
       ) : (
         <div className="space-y-3">

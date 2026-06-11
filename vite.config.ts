@@ -12,6 +12,10 @@ export default defineConfig({
         target: "http://192.168.1.198:8000",
         changeOrigin: true,
       },
+      "/files": {
+        target: "http://192.168.1.198:8000",
+        changeOrigin: true,
+      },
     },
   },
 });

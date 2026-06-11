@@ -14,13 +14,13 @@ export async function getTeacherSections(
 
 export async function createSection(
   courseId: string,
-  data: { title: string; description?: string; order?: number; material?: File | null },
+  data: { title: string; description?: string; order?: number; material_file_id?: string },
 ): Promise<ApiResponse<SectionItem & { course_id: string; created_at: string }>> {
   const formData = new FormData()
   formData.append('title', data.title)
   if (data.description) formData.append('description', data.description)
   if (data.order !== undefined) formData.append('order', String(data.order))
-  if (data.material) formData.append('material', data.material)
+  if (data.material_file_id) formData.append('material_file_id', data.material_file_id)
 
   const res = await request.post(`/teacher/courses/${courseId}/sections`, formData)
   return res as unknown as ApiResponse<SectionItem & { course_id: string; created_at: string }>

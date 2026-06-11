@@ -383,6 +383,7 @@ function QuizTakingView({
   }
 
   const handleMultiChoice = (qId: string, key: string) => {
+    let answerStr = ''
     setMultiAnswers((prev) => {
       const current = new Set(prev[qId] || [])
       if (current.has(key)) {
@@ -390,14 +391,10 @@ function QuizTakingView({
       } else {
         current.add(key)
       }
+      answerStr = Array.from(current).join(',')
       return { ...prev, [qId]: current }
     })
-    // 保存多选（逗号分隔）
-    const newMultiAnswers = { ...multiAnswers }
-    const s = newMultiAnswers[qId] || new Set<string>()
-    if (s.has(key)) s.delete(key); else s.add(key)
-    newMultiAnswers[qId] = s
-    doSave(qId, Array.from(s).join(','))
+    doSave(qId, answerStr)
   }
 
   const handleTrueFalse = (qId: string, value: string) => {

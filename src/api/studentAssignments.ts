@@ -1,4 +1,4 @@
-import request from '../utils/request'
+import request from "../utils/request";
 import type {
   ApiResponse,
   UploadResult,
@@ -6,17 +6,16 @@ import type {
   StudentAssignmentDetail,
   SubmissionData,
   MySubmissionData,
-} from '../types/api'
+} from "../types/api";
 
 export async function getAssignments(
   courseId: string,
   params?: { section_id?: string; status?: string },
 ): Promise<ApiResponse<StudentAssignmentListData>> {
-  const res = await request.get(
-    `/student/courses/${courseId}/assignments`,
-    { params },
-  )
-  return res as unknown as ApiResponse<StudentAssignmentListData>
+  const res = await request.get(`/student/courses/${courseId}/assignments`, {
+    params,
+  });
+  return res as unknown as ApiResponse<StudentAssignmentListData>;
 }
 
 export async function getAssignmentDetail(
@@ -25,8 +24,8 @@ export async function getAssignmentDetail(
 ): Promise<ApiResponse<StudentAssignmentDetail>> {
   const res = await request.get(
     `/student/courses/${courseId}/assignments/${assignmentId}`,
-  )
-  return res as unknown as ApiResponse<StudentAssignmentDetail>
+  );
+  return res as unknown as ApiResponse<StudentAssignmentDetail>;
 }
 
 /**
@@ -36,10 +35,10 @@ export async function getAssignmentDetail(
 export async function uploadFile(
   file: File,
 ): Promise<ApiResponse<UploadResult>> {
-  const formData = new FormData()
-  formData.append('file', file)
-  const res = await request.post('/upload', formData)
-  return res as unknown as ApiResponse<UploadResult>
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await request.post("/upload", formData);
+  return res as unknown as ApiResponse<UploadResult>;
 }
 
 /**
@@ -50,15 +49,15 @@ export async function submitAssignmentText(
   assignmentId: string,
   content: string,
 ): Promise<ApiResponse<SubmissionData>> {
-  const formData = new FormData()
-  formData.append('submit_type', 'text')
-  formData.append('content', content)
+  const formData = new FormData();
+  formData.append("submit_type", "text");
+  formData.append("content", content);
 
   const res = await request.post(
     `/student/courses/${courseId}/assignments/${assignmentId}/submit`,
     formData,
-  )
-  return res as unknown as ApiResponse<SubmissionData>
+  );
+  return res as unknown as ApiResponse<SubmissionData>;
 }
 
 /**
@@ -71,18 +70,18 @@ export async function submitAssignmentFile(
   file: File,
 ): Promise<ApiResponse<SubmissionData>> {
   // 第一步：上传文件
-  const uploadRes = await uploadFile(file)
-  const fileUrl = uploadRes.data.file_url
+  const uploadRes = await uploadFile(file);
+  const fileId = uploadRes.data.file_id;
 
   // 第二步：提交作业
-  const formData = new FormData()
-  formData.append('submit_type', 'file')
-  formData.append('file_urls', fileUrl)
+  const formData = new FormData();
+  formData.append("submit_type", "file");
+  formData.append("file_ids", fileId);
   const res = await request.post(
     `/student/courses/${courseId}/assignments/${assignmentId}/submit`,
     formData,
-  )
-  return res as unknown as ApiResponse<SubmissionData>
+  );
+  return res as unknown as ApiResponse<SubmissionData>;
 }
 
 /**
@@ -94,43 +93,44 @@ export async function submitAssignment(
   courseId: string,
   assignmentId: string,
   params: {
-    content?: string
-    files?: File[]
-    onUploadProgress?: (current: number, total: number) => void
+    content?: string;
+    files?: File[];
+    onUploadProgress?: (current: number, total: number) => void;
   },
 ): Promise<ApiResponse<SubmissionData>> {
-  const { content, files, onUploadProgress } = params
-  const hasContent = !!content?.trim()
-  const hasFiles = !!(files && files.length > 0)
+  const { content, files, onUploadProgress } = params;
+  const hasContent = !!content?.trim();
+  const hasFiles = !!(files && files.length > 0);
 
-  // 第一步：如有文件，逐个上传获取 URL
-  const fileUrls: string[] = []
+  // 第一步：如有文件，逐个上传获取 file_id
+  const fileIds: string[] = [];
   if (hasFiles) {
     for (let i = 0; i < files!.length; i++) {
-      onUploadProgress?.(i, files!.length)
-      const uploadRes = await uploadFile(files![i])
-      fileUrls.push(uploadRes.data.file_url)
+      onUploadProgress?.(i, files!.length);
+      const uploadRes = await uploadFile(files![i]);
+      fileIds.push(uploadRes.data.file_id);
     }
   }
 
   // 第二步：提交作业
-  const submitType: 'text' | 'file' = fileUrls.length > 0 ? 'file' : 'text'
-  const formData = new FormData()
-  formData.append('submit_type', submitType)
+  const submitType: "text" | "file" | "mixed" =
+    fileIds.length > 0 ? "file" : "text";
+  const formData = new FormData();
+  formData.append("submit_type", submitType);
 
   if (hasContent) {
-    formData.append('content', content!.trim())
+    formData.append("content", content!.trim());
   }
 
-  if (fileUrls.length > 0) {
-    formData.append('file_urls', fileUrls.join(','))
+  if (fileIds.length > 0) {
+    formData.append("file_ids", fileIds.join(","));
   }
 
   const res = await request.post(
     `/student/courses/${courseId}/assignments/${assignmentId}/submit`,
     formData,
-  )
-  return res as unknown as ApiResponse<SubmissionData>
+  );
+  return res as unknown as ApiResponse<SubmissionData>;
 }
 
 export async function getMySubmission(
@@ -139,6 +139,6 @@ export async function getMySubmission(
 ): Promise<ApiResponse<MySubmissionData | null>> {
   const res = await request.get(
     `/student/courses/${courseId}/assignments/${assignmentId}/my-submission`,
-  )
-  return res as unknown as ApiResponse<MySubmissionData | null>
+  );
+  return res as unknown as ApiResponse<MySubmissionData | null>;
 }

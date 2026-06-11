@@ -1,46 +1,56 @@
-import { useEffect, useState } from 'react'
-import { getStudentAnnouncements, getAnnouncement } from '../../../api/announcements'
-import type { StudentAnnouncementItem, AnnouncementDetail } from '../../../types/api'
+import { useEffect, useState } from "react";
+import {
+  getStudentAnnouncements,
+  getStudentAnnouncement,
+} from "../../../api/announcements";
+import type {
+  StudentAnnouncementItem,
+  AnnouncementDetail,
+} from "../../../types/api";
 
 interface Props {
-  courseId: string
+  courseId: string;
 }
 
 export default function AnnouncementsTab({ courseId }: Props) {
-  const [items, setItems] = useState<StudentAnnouncementItem[]>([])
-  const [loading, setLoading] = useState(true)
-  const [expandedId, setExpandedId] = useState<string | null>(null)
-  const [unreadCount, setUnreadCount] = useState(0)
+  const [items, setItems] = useState<StudentAnnouncementItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
-    let cancelled = false
-    setLoading(true)
+    let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLoading(true);
     getStudentAnnouncements(courseId)
       .then((res) => {
         if (!cancelled && res.success) {
-          setItems(res.data.items)
-          setUnreadCount(res.data.unread_count)
+          setItems(res.data.items);
+          setUnreadCount(res.data.unread_count);
         }
       })
       .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
+        if (!cancelled) setLoading(false);
+      });
     return () => {
-      cancelled = true
-    }
-  }, [courseId])
+      cancelled = true;
+    };
+  }, [courseId]);
 
   if (loading) {
     return (
       <div className="space-y-3">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="animate-pulse rounded-lg border border-slate-200 bg-white p-4">
+          <div
+            key={i}
+            className="animate-pulse rounded-lg border border-slate-200 bg-white p-4"
+          >
             <div className="mb-2 h-5 w-3/4 rounded bg-slate-200" />
             <div className="h-4 w-1/2 rounded bg-slate-100" />
           </div>
         ))}
       </div>
-    )
+    );
   }
 
   if (items.length === 0) {
@@ -49,7 +59,7 @@ export default function AnnouncementsTab({ courseId }: Props) {
         <p className="text-3xl">📢</p>
         <p className="mt-2 text-sm text-slate-500">暂无课程公告</p>
       </div>
-    )
+    );
   }
 
   return (
@@ -78,21 +88,25 @@ export default function AnnouncementsTab({ courseId }: Props) {
               }
             >
               <div className="flex items-center gap-3 min-w-0">
-                {item.is_pinned && <span className="shrink-0 text-red-500">📌</span>}
+                {item.is_pinned && (
+                  <span className="shrink-0 text-red-500">📌</span>
+                )}
                 {!item.is_read && (
                   <span className="shrink-0 h-2 w-2 rounded-full bg-red-500" />
                 )}
                 <div className="min-w-0">
-                  <h3 className={`truncate font-medium ${!item.is_read ? 'text-slate-900' : 'text-slate-600'}`}>
+                  <h3
+                    className={`truncate font-medium ${!item.is_read ? "text-slate-900" : "text-slate-600"}`}
+                  >
                     {item.title}
                   </h3>
                   <p className="mt-0.5 text-xs text-slate-400">
-                    {new Date(item.created_at).toLocaleString('zh-CN')}
+                    {new Date(item.created_at).toLocaleString("zh-CN")}
                   </p>
                 </div>
               </div>
               <span className="shrink-0 ml-2 text-xs text-slate-400">
-                {expandedId === item.id ? '收起 ▲' : '展开 ▼'}
+                {expandedId === item.id ? "收起 ▲" : "展开 ▼"}
               </span>
             </div>
             {expandedId === item.id && (
@@ -102,33 +116,34 @@ export default function AnnouncementsTab({ courseId }: Props) {
         ))}
       </div>
     </div>
-  )
+  );
 }
 
 function ExpandedAnnouncement({
   courseId,
   noticeId,
 }: {
-  courseId: string
-  noticeId: string
+  courseId: string;
+  noticeId: string;
 }) {
-  const [detail, setDetail] = useState<AnnouncementDetail | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [detail, setDetail] = useState<AnnouncementDetail | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let cancelled = false
-    setLoading(true)
-    getAnnouncement(courseId, noticeId)
+    let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLoading(true);
+    getStudentAnnouncement(courseId, noticeId)
       .then((res) => {
-        if (!cancelled && res.success) setDetail(res.data)
+        if (!cancelled && res.success) setDetail(res.data);
       })
       .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
+        if (!cancelled) setLoading(false);
+      });
     return () => {
-      cancelled = true
-    }
-  }, [courseId, noticeId])
+      cancelled = true;
+    };
+  }, [courseId, noticeId]);
 
   if (loading) {
     return (
@@ -138,10 +153,10 @@ function ExpandedAnnouncement({
           <div className="h-4 w-1/2 rounded bg-slate-100" />
         </div>
       </div>
-    )
+    );
   }
 
-  if (!detail) return null
+  if (!detail) return null;
 
   return (
     <div className="border-t border-slate-100 px-4 py-4">
@@ -150,9 +165,9 @@ function ExpandedAnnouncement({
       </div>
       {detail.updated_at && (
         <p className="mt-3 text-xs text-slate-400">
-          最后更新于 {new Date(detail.updated_at).toLocaleString('zh-CN')}
+          最后更新于 {new Date(detail.updated_at).toLocaleString("zh-CN")}
         </p>
       )}
     </div>
-  )
+  );
 }

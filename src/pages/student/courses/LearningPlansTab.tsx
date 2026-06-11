@@ -27,6 +27,7 @@ export default function LearningPlansTab({ courseId }: Props) {
 
   const [goal, setGoal] = useState('')
   const [availableTime, setAvailableTime] = useState('60')
+  const [planDays, setPlanDays] = useState('7')
 
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
@@ -54,9 +55,11 @@ export default function LearningPlansTab({ courseId }: Props) {
       await createLearningPlan(courseId, {
         goal: goal.trim() || undefined,
         available_time_per_day: Number(availableTime) || 60,
+        plan_days: Number(planDays) || 7,
       })
       setGoal('')
       setAvailableTime('60')
+      setPlanDays('7')
       setShowCreate(false)
       setRefreshKey((k) => k + 1)
     } catch {
@@ -100,14 +103,29 @@ export default function LearningPlansTab({ courseId }: Props) {
               {error}
             </div>
           )}
-          <div className="mb-3 flex gap-3">
-            <input
-              type="number"
-              value={availableTime}
-              onChange={(e) => setAvailableTime(e.target.value)}
-              placeholder="每日可用时间（分钟）"
-              className="w-48 rounded-lg border border-slate-300 px-3 py-2 text-sm transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
-            />
+          <div className="mb-3 flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                value={availableTime}
+                onChange={(e) => setAvailableTime(e.target.value)}
+                placeholder="每日可用时间"
+                className="w-32 rounded-lg border border-slate-300 px-3 py-2 text-sm transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+              />
+              <span className="text-sm text-slate-500">分钟/天</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                min="1"
+                max="60"
+                value={planDays}
+                onChange={(e) => setPlanDays(e.target.value)}
+                placeholder="计划天数"
+                className="w-24 rounded-lg border border-slate-300 px-3 py-2 text-sm transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+              />
+              <span className="text-sm text-slate-500">天</span>
+            </div>
           </div>
           <textarea
             value={goal}
@@ -162,9 +180,16 @@ export default function LearningPlansTab({ courseId }: Props) {
               >
                 <div>
                   <h3 className="font-medium text-slate-800">
-                    {item.course_name} · v{item.version}
+                    {item.course_name}
                   </h3>
                   <p className="mt-0.5 text-sm text-slate-500">
+                    {item.basis?.goal
+                      ? `${item.basis.goal.slice(0, 30)}${item.basis.goal.length > 30 ? '…' : ''}`
+                      : item.basis
+                        ? `${item.basis.plan_days || '?'} 天 · 每日 ${item.basis.available_time_per_day || '?'} 分钟`
+                        : ''}
+                  </p>
+                  <p className="text-xs text-slate-400">
                     创建于 {new Date(item.created_at).toLocaleDateString('zh-CN')}
                   </p>
                 </div>
@@ -217,6 +242,8 @@ function ExpandedPlan({
   const [progress, setProgress] = useState<PlanProgress | null>(null)
   const [loading, setLoading] = useState(true)
   const [toggling, setToggling] = useState<number | null>(null)
+  const [checkinDay, setCheckinDay] = useState<number | null>(null)
+  const [feedbackText, setFeedbackText] = useState('')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -239,10 +266,24 @@ function ExpandedPlan({
     load()
   }, [load])
 
-  const handleToggle = async (day: number, completed: boolean) => {
+  const handleCheckin = async (day: number) => {
     setToggling(day)
     try {
-      await markTaskComplete(courseId, planId, day, !completed)
+      await markTaskComplete(courseId, planId, day, true, feedbackText.trim() || undefined)
+      setFeedbackText('')
+      setCheckinDay(null)
+      await load()
+    } catch {
+      // ignore
+    } finally {
+      setToggling(null)
+    }
+  }
+
+  const handleUndo = async (day: number) => {
+    setToggling(day)
+    try {
+      await markTaskComplete(courseId, planId, day, false)
       await load()
     } catch {
       // ignore
@@ -265,6 +306,26 @@ function ExpandedPlan({
   return (
     <div className="border-t border-slate-100 px-4 py-4">
       <div className="space-y-4 text-sm">
+        {/* 计划概要 */}
+        {plan?.basis && (
+          <div className="rounded-lg bg-slate-50 p-3">
+            <p className="mb-1 font-medium text-slate-700">📋 计划概要</p>
+            <p className="text-slate-600">
+              {plan.basis.plan_days || '?'} 天 · 每日 {plan.basis.available_time_per_day || '?'} 分钟
+            </p>
+            {plan.basis.goal && (
+              <p className="mt-0.5 text-xs text-slate-500">
+                🎯 {plan.basis.goal}
+              </p>
+            )}
+            {plan.basis.adjustment_feedback && (
+              <p className="mt-0.5 text-xs text-orange-600">
+                🔄 调整反馈：{plan.basis.adjustment_feedback}
+              </p>
+            )}
+          </div>
+        )}
+
         {/* 分析 */}
         {plan?.analysis && (
           <div className="rounded-lg bg-slate-50 p-3">
@@ -324,44 +385,87 @@ function ExpandedPlan({
                   (t) => t.day === day.day,
                 )
                 const completed = taskProgress?.completed ?? false
+                const isOpen = checkinDay === day.day
                 return (
                   <div
                     key={day.day}
-                    className={`flex items-start gap-3 rounded-lg border p-3 transition-colors ${
+                    className={`rounded-lg border p-3 transition-colors ${
                       completed
                         ? 'border-green-100 bg-green-50/50'
                         : 'border-slate-100'
                     }`}
                   >
-                    <button
-                      onClick={() => handleToggle(day.day, completed)}
-                      disabled={toggling === day.day}
-                      className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-colors ${
-                        completed
-                          ? 'bg-green-500 text-white'
-                          : 'bg-blue-100 text-blue-600 hover:bg-blue-200'
-                      }`}
-                    >
-                      {toggling === day.day ? '…' : completed ? '✓' : day.day}
-                    </button>
-                    <div className="min-w-0 flex-1">
-                      <p
-                        className={`text-slate-700 ${
-                          completed ? 'line-through opacity-60' : ''
+                    <div className="flex items-start gap-3">
+                      <button
+                        onClick={() => {
+                          if (completed) {
+                            handleUndo(day.day)
+                          } else {
+                            setCheckinDay(isOpen ? null : day.day)
+                            setFeedbackText('')
+                          }
+                        }}
+                        disabled={toggling === day.day}
+                        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-colors ${
+                          completed
+                            ? 'bg-green-500 text-white hover:bg-green-600'
+                            : 'bg-blue-100 text-blue-600 hover:bg-blue-200'
                         }`}
+                        title={completed ? '取消打卡' : '点击打卡'}
                       >
-                        {day.task}
-                      </p>
-                      <p className="mt-0.5 text-xs text-slate-400">
-                        ⏱ {day.duration_minutes} 分钟
-                        {day.section_title ? ` · ${day.section_title}` : ''}
-                      </p>
-                      {taskProgress?.feedback && (
-                        <p className="mt-1 text-xs text-slate-500">
-                          💬 {taskProgress.feedback}
+                        {toggling === day.day ? '…' : completed ? '✓' : day.day}
+                      </button>
+                      <div className="min-w-0 flex-1">
+                        <p
+                          className={`text-slate-700 ${
+                            completed ? 'line-through opacity-60' : ''
+                          }`}
+                        >
+                          {day.task}
                         </p>
-                      )}
+                        <p className="mt-0.5 text-xs text-slate-400">
+                          ⏱ {day.duration_minutes} 分钟
+                          {day.section_title ? ` · ${day.section_title}` : ''}
+                        </p>
+                        {taskProgress?.feedback && (
+                          <p className="mt-1 text-xs text-slate-500">
+                            💬 {taskProgress.feedback}
+                          </p>
+                        )}
+                        {taskProgress?.completed_at && (
+                          <p className="mt-0.5 text-xs text-slate-400">
+                            🕒 {new Date(taskProgress.completed_at).toLocaleString('zh-CN')}
+                          </p>
+                        )}
+                      </div>
                     </div>
+                    {/* 打卡反馈输入 */}
+                    {isOpen && !completed && (
+                      <div className="mt-3 border-t border-slate-200 pt-3">
+                        <textarea
+                          value={feedbackText}
+                          onChange={(e) => setFeedbackText(e.target.value)}
+                          placeholder="学习心得（可选），例如：已掌握进程状态转换"
+                          rows={2}
+                          className="mb-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm transition-colors focus:border-blue-400 focus:outline-none"
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleCheckin(day.day)}
+                            disabled={toggling === day.day}
+                            className="rounded-lg bg-green-600 px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-green-700 disabled:opacity-50"
+                          >
+                            {toggling === day.day ? '打卡中...' : '✅ 确认打卡'}
+                          </button>
+                          <button
+                            onClick={() => setCheckinDay(null)}
+                            className="rounded-lg border border-slate-200 px-4 py-1.5 text-sm text-slate-500 transition-colors hover:bg-slate-50"
+                          >
+                            取消
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )
               })}

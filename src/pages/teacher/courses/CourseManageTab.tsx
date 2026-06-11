@@ -7,6 +7,7 @@ import {
   deleteSection,
   publishAssignmentInSection,
 } from '../../../api/teacherSections'
+import { uploadFile } from '../../../api/upload'
 import {
   getCourseStudents,
   addStudents,
@@ -245,6 +246,30 @@ function SectionsManager({ courseId }: { courseId: string }) {
     setSMaterial(null)
   }
 
+  const handleDownload = async (url: string, filename: string) => {
+    try {
+      const token = localStorage.getItem('token')
+      const baseUrl = import.meta.env.VITE_API_BASE_URL ?? ''
+      const fullUrl = url.startsWith('http') ? url : `${baseUrl}${url}`
+      const res = await fetch(fullUrl, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
+      if (!res.ok) throw new Error('下载失败')
+      const blob = await res.blob()
+      const blobUrl = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = blobUrl
+      a.download = filename
+      a.click()
+      URL.revokeObjectURL(blobUrl)
+    } catch {
+      setNotice({ type: 'error', text: '课件下载失败，请稍后重试。' })
+    }
+  }
+
+  const getMaterialFileName = (url: string) =>
+    url.split('/').pop() || '课件'
+
   const handleCreateSection = async (e: FormEvent) => {
     e.preventDefault()
     if (!sTitle.trim()) {
@@ -254,11 +279,20 @@ function SectionsManager({ courseId }: { courseId: string }) {
     setCreating(true)
     setNotice(null)
     try {
+      let materialFileId: string | undefined
+      if (sMaterial) {
+        const uploadRes = await uploadFile(sMaterial)
+        if (!uploadRes.success) {
+          setNotice({ type: 'error', text: '课件上传失败，请重试。' })
+          return
+        }
+        materialFileId = uploadRes.data.file_id
+      }
       await createSection(courseId, {
         title: sTitle.trim(),
         description: sDesc.trim() || undefined,
         order: Number(sOrder) || undefined,
-        material: sMaterial,
+        material_file_id: materialFileId,
       })
       resetCreateForm()
       setShowCreate(false)
@@ -406,11 +440,22 @@ function SectionsManager({ courseId }: { courseId: string }) {
                       </div>
                       <div className="mt-2 space-y-1 text-xs text-slate-500">
                         <p>作业：{s.assignment_count} 个</p>
-                        {s.material_file_name && <p>资料文件：{s.material_file_name}</p>}
                         {s.material_url && (
-                          <p className="break-all">
-                            资料链接：<a href={s.material_url} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">{s.material_url}</a>
-                          </p>
+                          <div className="flex items-center gap-2">
+                            <span className="flex items-center gap-1 text-slate-500">
+                              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                              </svg>
+                              {getMaterialFileName(s.material_url)}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleDownload(s.material_url!, getMaterialFileName(s.material_url))}
+                              className="rounded px-2 py-0.5 text-xs font-medium text-blue-600 transition-colors hover:bg-blue-50 hover:text-blue-800"
+                            >
+                              下载课件
+                            </button>
+                          </div>
                         )}
                       </div>
                     </div>

@@ -43,6 +43,59 @@ function getAttachmentName(url: string) {
   }
 }
 
+function getFileIcon(name: string): string {
+  const ext = name.split('.').pop()?.toLowerCase()
+  switch (ext) {
+    case 'pdf': return '📕'
+    case 'txt': return '📄'
+    case 'doc':
+    case 'docx': return '📘'
+    default: return '📎'
+  }
+}
+
+function SubmittedFileItem({ url, fileName }: { url: string; fileName: string }) {
+  const [downloading, setDownloading] = useState(false)
+
+  const handleDownload = async () => {
+    setDownloading(true)
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch(url, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
+      if (!res.ok) throw new Error('下载失败')
+      const blob = await res.blob()
+      const blobUrl = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = blobUrl
+      a.download = fileName
+      a.click()
+      URL.revokeObjectURL(blobUrl)
+    } catch {
+      // ignore
+    } finally {
+      setDownloading(false)
+    }
+  }
+
+  return (
+    <div className="flex items-center justify-between rounded px-2 py-1 hover:bg-slate-50">
+      <div className="flex items-center gap-2 min-w-0">
+        <span className="text-lg shrink-0">{getFileIcon(fileName)}</span>
+        <span className="text-sm text-slate-700 truncate">{fileName}</span>
+      </div>
+      <button
+        onClick={handleDownload}
+        disabled={downloading}
+        className="shrink-0 ml-2 rounded px-2 py-0.5 text-xs text-blue-600 transition-colors hover:bg-blue-50 hover:text-blue-800 disabled:opacity-50"
+      >
+        {downloading ? '下载中...' : '下载'}
+      </button>
+    </div>
+  )
+}
+
 export default function AssignmentsTab({ courseId }: Props) {
   const [items, setItems] = useState<TeacherAssignmentItem[]>([])
   const [sections, setSections] = useState<SectionItem[]>([])
@@ -233,7 +286,16 @@ export default function AssignmentsTab({ courseId }: Props) {
             ) : (
               <div className="space-y-3">
                 {submissions.map((submission) => {
-                  const text = submission.content || submission.extracted_text || ''
+                  const hasContent = !!submission.content
+                  const hasExtractedText = !!submission.extracted_text
+                  const urls = submission.file_urls?.length
+                    ? submission.file_urls
+                    : submission.file_url
+                      ? [submission.file_url]
+                      : []
+                  const hasFiles = urls.length > 0
+                  const isEmpty = !hasContent && !hasExtractedText && !hasFiles
+
                   return (
                     <div key={submission.id} className="rounded-lg border border-slate-200 bg-slate-50 p-3">
                       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
@@ -245,14 +307,43 @@ export default function AssignmentsTab({ courseId }: Props) {
                           {submission.confirmed ? `已确认：${submission.score ?? '-'}` : submission.graded ? `已批改：${submission.ai_score ?? '-'}` : '待批改'}
                         </span>
                       </div>
-                      {submission.file_url && (
-                        <a href={submission.file_url} target="_blank" rel="noreferrer" className="mb-2 inline-block text-xs text-blue-600 hover:text-blue-700">查看提交文件</a>
+
+                      {/* 学生提交的文本内容 */}
+                      {hasContent && (
+                        <div className="mb-2">
+                          <p className="mb-1 text-xs font-medium text-slate-500">📝 提交文本</p>
+                          <p className="max-h-32 overflow-auto whitespace-pre-wrap rounded border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600">{submission.content}</p>
+                        </div>
                       )}
-                      {text ? (
-                        <p className="max-h-32 overflow-auto whitespace-pre-wrap rounded border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600">{text}</p>
-                      ) : (
-                        <p className="rounded border border-dashed border-slate-200 bg-white px-3 py-2 text-sm text-slate-400">暂无可预览的提交文本。</p>
+
+                      {/* 提交的文件 */}
+                      {hasFiles && (
+                        <div className="mb-2 rounded border border-slate-200 bg-white p-2">
+                          <p className="mb-1 text-xs font-medium text-slate-500">
+                            📎 提交文件（{urls.length} 个）
+                          </p>
+                          <div className="space-y-1">
+                            {urls.map((url, i) => {
+                              const fileName = url.split('/').pop() || `文件${i + 1}`
+                              return <SubmittedFileItem key={i} url={url} fileName={fileName} />
+                            })}
+                          </div>
+                        </div>
                       )}
+
+                      {/* 从文件中提取的文字内容 */}
+                      {hasExtractedText && (
+                        <div className="mb-2">
+                          <p className="mb-1 text-xs font-medium text-slate-500">📋 文件提取内容</p>
+                          <p className="max-h-32 overflow-auto whitespace-pre-wrap rounded border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600">{submission.extracted_text}</p>
+                        </div>
+                      )}
+
+                      {/* 空状态 */}
+                      {isEmpty && (
+                        <p className="rounded border border-dashed border-slate-200 bg-white px-3 py-2 text-sm text-slate-400">暂无提交内容。</p>
+                      )}
+
                       {submission.comments && <p className="mt-2 text-xs text-slate-500">AI 评语：{submission.comments}</p>}
                       {submission.teacher_comment && <p className="mt-1 text-xs text-slate-500">教师评语：{submission.teacher_comment}</p>}
                     </div>

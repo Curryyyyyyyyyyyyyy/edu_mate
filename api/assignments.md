@@ -10,7 +10,7 @@
 >
 > 权限：任意已登录用户（学生或教师）。
 
-文件上传已从作业发布/提交接口中独立出来，前端应**先将文件通过本接口上传到文件服务器**，拿到返回的 `file_url` 后再调用作业发布或提交接口。
+文件上传已从作业发布/提交接口中独立出来，前端应**先将文件通过本接口上传**，拿到返回的 `file_id` 后再调用作业发布或提交接口。
 
 ### 0.1 上传单个文件
 
@@ -18,13 +18,13 @@
 POST /api/upload
 ```
 
-**功能说明：** 每次调用上传一个文件，返回文件服务器上的可访问路径 `file_url`。多个文件需多次调用。
+**功能说明：** 每次调用上传一个文件，写入 `files` 通用文件表，返回 `file_id` 和可访问路径 `file_url`。多个文件需多次调用。
 
 **请求格式（multipart/form-data）：**
 
-| 字段 | 类型 | 必填 | 说明                                                 |
-| ---- | ---- | ---- | ---------------------------------------------------- |
-| file | file | 是   | 单个二进制文件，支持 PDF、TXT、DOC、DOCX，最大 10 MB |
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| file | file | 是 | 单个二进制文件，支持 PDF、TXT、DOC、DOCX，最大 10 MB |
 
 **响应示例：**
 
@@ -32,6 +32,7 @@ POST /api/upload
 {
   "success": true,
   "data": {
+    "file_id": "f_abc123",
     "file_url": "/files/a1b2c3d4_实验报告.pdf",
     "file_name": "实验报告.pdf",
     "file_size": 204800,
@@ -43,33 +44,40 @@ POST /api/upload
 
 **字段说明：**
 
-| 字段           | 类型           | 说明                                                          |
-| -------------- | -------------- | ------------------------------------------------------------- |
-| file_url       | string         | 文件在文件服务器上的访问路径，用于后续接口（如作业发布/提交） |
-| file_name      | string         | 原始文件名                                                    |
-| file_size      | number         | 文件大小（字节）                                              |
-| extracted_text | string \| null | C++ 文件处理服务提取的文本内容，不可解析时返回 null           |
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| file_id | string | 文件在 `files` 表中的唯一 ID，用于后续接口（作业发布/提交传此值） |
+| file_url | string | 文件在文件服务器上的访问路径，前端可直接用于下载/预览 |
+| file_name | string | 原始文件名 |
+| file_size | number | 文件大小（字节） |
+| extracted_text | string \| null | C++ 文件处理服务提取的文本内容，不可解析时返回 null |
 
 ---
 
 ## 一、学生端作业 API
 
-> 基础路径：`/api/student/assignments`
+> 基础路径：`/api/student/courses/{course_id}/assignments`
 >
 > 权限：`role = student`
 
 ### 1.1 获取作业列表
 
 ```http
-GET /api/student/assignments
+GET /api/student/courses/{course_id}/assignments
 ```
+
+**路径参数：**
+
+| 参数 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| course_id | string | 是 | 课程 ID |
 
 **查询参数：**
 
-| 参数   | 类型   | 必填 | 说明           |
-| ------ | ------ | ---- | -------------- |
-| course | string | 否   | 按课程名筛选   |
-| status | string | 否   | open 或 closed |
+| 参数 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| course | string | 否 | 按课程名筛选 |
+| status | string | 否 | open 或 closed |
 
 **响应示例：**
 
@@ -98,14 +106,15 @@ GET /api/student/assignments
 ### 1.2 获取作业详情
 
 ```http
-GET /api/student/assignments/{assignment_id}
+GET /api/student/courses/{course_id}/assignments/{assignment_id}
 ```
 
 **路径参数：**
 
-| 参数          | 类型   | 必填 | 说明    |
-| ------------- | ------ | ---- | ------- |
-| assignment_id | string | 是   | 作业 ID |
+| 参数 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| course_id | string | 是 | 课程 ID |
+| assignment_id | string | 是 | 作业 ID |
 
 **响应示例：**
 
@@ -131,18 +140,25 @@ GET /api/student/assignments/{assignment_id}
 ### 1.3 提交作业
 
 ```http
-POST /api/student/assignments/{assignment_id}/submit
+POST /api/student/courses/{course_id}/assignments/{assignment_id}/submit
 ```
 
-**功能说明：** 学生提交作业，支持文本和文件两种模式。**文件提交时需先将文件通过 `POST /api/upload` 上传，获得 `file_url` 后再调用本接口。**
+**路径参数：**
+
+| 参数 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| course_id | string | 是 | 课程 ID |
+| assignment_id | string | 是 | 作业 ID |
+
+**功能说明：** 学生提交作业，支持文本和文件两种模式。**文件提交时需先将文件通过 `POST /api/upload` 上传，获得 `file_id` 后再调用本接口。**
 
 **请求格式（multipart/form-data）：**
 
-| 字段        | 类型   | 必填        | 说明                                                                     |
-| ----------- | ------ | ----------- | ------------------------------------------------------------------------ |
-| submit_type | string | 是          | `text`（文本）或 `file`（文件）                                          |
-| content     | string | text 时必填 | 作业正文                                                                 |
-| file_urls   | string | file 时必填 | 已上传文件的 URL，多个以逗号分隔（来自 `/api/upload` 返回的 `file_url`） |
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| submit_type | string | 是 | `text`（文本）或 `file`（文件） |
+| content | string | text 时必填 | 作业正文 |
+| file_ids | string | file 时必填 | 已上传文件的 ID，多个以逗号分隔（来自 `/api/upload` 返回的 `file_id`） |
 
 **示例 — 文本提交：**
 
@@ -155,7 +171,7 @@ content=进程是程序执行的实体...
 
 ```text
 submit_type=file
-file_urls=/files/a1b2c3d4_报告.pdf,/files/e5f6g7h8_代码.zip
+file_ids=f_abc123,f_def456
 ```
 
 **响应示例：**
@@ -180,7 +196,19 @@ file_urls=/files/a1b2c3d4_报告.pdf,/files/e5f6g7h8_代码.zip
 ### 1.4 查看本人提交详情
 
 ```http
-GET /api/student/assignments/{assignment_id}/my-submission
+GET /api/student/courses/{course_id}/assignments/{assignment_id}/my-submission
+```
+
+**路径参数：**
+
+| 参数 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| course_id | string | 是 | 课程 ID |
+| assignment_id | string | 是 | 作业 ID |
+
+**响应示例：**
+
+```json
 ```
 
 **响应示例：**
@@ -195,16 +223,8 @@ GET /api/student/assignments/{assignment_id}/my-submission
     "content": "学生提交的文本内容（仅 text 类型）",
     "file_urls": ["/files/a1b2c3d4_报告.pdf", "/files/e5f6g7h8_代码.zip"],
     "files": [
-      {
-        "filename": "实验报告.pdf",
-        "file_url": "/files/a1b2c3d4_报告.pdf",
-        "file_size": 204800
-      },
-      {
-        "filename": "源代码.zip",
-        "file_url": "/files/e5f6g7h8_代码.zip",
-        "file_size": 51200
-      }
+      { "filename": "实验报告.pdf", "file_url": "/files/a1b2c3d4_报告.pdf", "file_size": 204800 },
+      { "filename": "源代码.zip", "file_url": "/files/e5f6g7h8_代码.zip", "file_size": 51200 }
     ],
     "submitted_at": "2026-06-08T14:30:00+08:00",
     "status": "submitted",
@@ -229,29 +249,35 @@ GET /api/student/assignments/{assignment_id}/my-submission
 
 ## 二、教师端作业管理 API
 
-> 基础路径：`/api/teacher/assignments`
+> 基础路径：`/api/teacher/courses/{course_id}/assignments`
 >
 > 权限：`role = teacher`
 
 ### 2.1 发布作业
 
 ```http
-POST /api/teacher/assignments
+POST /api/teacher/courses/{course_id}/assignments
 ```
 
-**功能说明：** 教师发布新作业。如有附件，需先将文件通过 `POST /api/upload` 上传，得到 `file_url` 后再传入 `attachment_url`。
+**路径参数：**
+
+| 参数 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| course_id | string | 是 | 课程 ID |
+
+**功能说明：** 教师发布新作业。如有附件，需先将文件通过 `POST /api/upload` 上传，得到 `file_id` 后再传入 `attachment_file_id`。
 
 **请求格式（multipart/form-data）：**
 
-| 字段             | 类型   | 必填 | 说明                                                             |
-| ---------------- | ------ | ---- | ---------------------------------------------------------------- |
-| title            | string | 是   | 作业标题                                                         |
-| course           | string | 是   | 课程名称                                                         |
-| description      | string | 是   | 作业要求说明                                                     |
-| due_at           | string | 是   | 截止时间（ISO 8601 格式）                                        |
-| reference_answer | string | 否   | 参考答案（供 AI 批改参考）                                       |
-| rubric           | string | 否   | 评分标准（供 AI 批改参考）                                       |
-| attachment_url   | string | 否   | 附件在文件服务器上的路径（来自 `/api/upload` 返回的 `file_url`） |
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| title | string | 是 | 作业标题 |
+| course | string | 是 | 课程名称 |
+| description | string | 是 | 作业要求说明 |
+| due_at | string | 是 | 截止时间（ISO 8601 格式） |
+| reference_answer | string | 否 | 参考答案（供 AI 批改参考） |
+| rubric | string | 否 | 评分标准（供 AI 批改参考） |
+| attachment_file_id | string | 否 | 附件在 `files` 表中的 ID（来自 `/api/upload` 返回的 `file_id`） |
 
 **响应示例：**
 
@@ -277,15 +303,21 @@ POST /api/teacher/assignments
 ### 2.2 获取作业列表
 
 ```http
-GET /api/teacher/assignments
+GET /api/teacher/courses/{course_id}/assignments
 ```
+
+**路径参数：**
+
+| 参数 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| course_id | string | 是 | 课程 ID |
 
 **查询参数：**
 
-| 参数   | 类型   | 必填 | 说明           |
-| ------ | ------ | ---- | -------------- |
-| course | string | 否   | 按课程名筛选   |
-| status | string | 否   | open 或 closed |
+| 参数 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| course | string | 否 | 按课程名筛选 |
+| status | string | 否 | open 或 closed |
 
 **响应示例：**
 
@@ -315,14 +347,15 @@ GET /api/teacher/assignments
 ### 2.3 获取作业详情
 
 ```http
-GET /api/teacher/assignments/{assignment_id}
+GET /api/teacher/courses/{course_id}/assignments/{assignment_id}
 ```
 
 **路径参数：**
 
-| 参数          | 类型   | 必填 | 说明    |
-| ------------- | ------ | ---- | ------- |
-| assignment_id | string | 是   | 作业 ID |
+| 参数 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| course_id | string | 是 | 课程 ID |
+| assignment_id | string | 是 | 作业 ID |
 
 **响应示例：**
 
@@ -352,7 +385,7 @@ GET /api/teacher/assignments/{assignment_id}
 ### 2.4 更新作业
 
 ```http
-PATCH /api/teacher/assignments/{assignment_id}
+PATCH /api/teacher/courses/{course_id}/assignments/{assignment_id}
 ```
 
 **请求体（application/json）：**
@@ -384,7 +417,7 @@ PATCH /api/teacher/assignments/{assignment_id}
 ### 2.5 关闭作业
 
 ```http
-POST /api/teacher/assignments/{assignment_id}/close
+POST /api/teacher/courses/{course_id}/assignments/{assignment_id}/close
 ```
 
 **响应示例：**
@@ -405,7 +438,7 @@ POST /api/teacher/assignments/{assignment_id}/close
 ### 2.6 获取作业提交列表
 
 ```http
-GET /api/teacher/assignments/{assignment_id}/submissions
+GET /api/teacher/courses/{course_id}/assignments/{assignment_id}/submissions
 ```
 
 **响应示例：**
@@ -425,16 +458,8 @@ GET /api/teacher/assignments/{assignment_id}/submissions
         "extracted_text": "C++ 从文件中提取的文本内容",
         "file_urls": ["/files/a1b2c3d4_报告.pdf", "/files/e5f6g7h8_代码.zip"],
         "files": [
-          {
-            "filename": "实验报告.pdf",
-            "file_url": "/files/a1b2c3d4_报告.pdf",
-            "file_size": 204800
-          },
-          {
-            "filename": "源代码.zip",
-            "file_url": "/files/e5f6g7h8_代码.zip",
-            "file_size": 51200
-          }
+          { "filename": "实验报告.pdf", "file_url": "/files/a1b2c3d4_报告.pdf", "file_size": 204800 },
+          { "filename": "源代码.zip", "file_url": "/files/e5f6g7h8_代码.zip", "file_size": 51200 }
         ],
         "submitted_at": "2026-06-08T14:30:00+08:00",
         "status": "submitted",
@@ -453,14 +478,14 @@ GET /api/teacher/assignments/{assignment_id}/submissions
 
 ## 三、教师端 AI 批改 API
 
-> 基础路径：`/api/teacher/assignments/{assignment_id}`
+> 基础路径：`/api/teacher/courses/{course_id}/assignments/{assignment_id}`
 >
 > 权限：`role = teacher`
 
 ### 3.1 AI 批改作业
 
 ```http
-POST /api/teacher/assignments/{assignment_id}/grade
+POST /api/teacher/courses/{course_id}/assignments/{assignment_id}/grade
 ```
 
 **请求体（application/json）：**
@@ -474,10 +499,10 @@ POST /api/teacher/assignments/{assignment_id}/grade
 
 **字段说明：**
 
-| 字段                 | 类型    | 必填 | 说明                              |
-| -------------------- | ------- | ---- | --------------------------------- |
-| submission_ids       | array   | 是   | 待批改的提交 ID 列表              |
-| need_teacher_confirm | boolean | 否   | 是否需要教师二次确认（默认 true） |
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| submission_ids | array | 是 | 待批改的提交 ID 列表 |
+| need_teacher_confirm | boolean | 否 | 是否需要教师二次确认（默认 true） |
 
 **响应示例：**
 
@@ -493,7 +518,9 @@ POST /api/teacher/assignments/{assignment_id}/grade
         "student_name": "张三",
         "ai_score": 86,
         "comments": "整体思路正确，但关键概念解释不够完整。",
-        "deductions": [{ "point": "进程状态转换条件说明不完整", "minus": 6 }],
+        "deductions": [
+          { "point": "进程状态转换条件说明不完整", "minus": 6 }
+        ],
         "suggestions": ["补充阻塞态与就绪态的转换条件", "增加调度算法对比"],
         "confirmed": false
       }
@@ -540,7 +567,7 @@ PATCH /api/teacher/submissions/{submission_id}/grade
 ### 3.3 获取批改报告
 
 ```http
-GET /api/teacher/assignments/{assignment_id}/grading-report
+GET /api/teacher/courses/{course_id}/assignments/{assignment_id}/grading-report
 ```
 
 **响应示例：**
@@ -554,10 +581,7 @@ GET /api/teacher/assignments/{assignment_id}/grading-report
     "graded_count": 25,
     "common_mistakes": ["概念解释不完整", "缺少案例分析"],
     "weak_points": ["进程状态转换", "线程共享资源"],
-    "teaching_suggestions": [
-      "建议下一节课用流程图讲解状态转换",
-      "安排一次概念对比小测"
-    ]
+    "teaching_suggestions": ["建议下一节课用流程图讲解状态转换", "安排一次概念对比小测"]
   },
   "message": "ok"
 }
@@ -572,7 +596,7 @@ GET /api/teacher/assignments/{assignment_id}/grading-report
 ### 4.1 触发查重与比对分析
 
 ```http
-POST /api/teacher/assignments/{assignment_id}/analyze
+POST /api/teacher/courses/{course_id}/assignments/{assignment_id}/analyze
 ```
 
 **请求体（application/json）：**
@@ -587,11 +611,11 @@ POST /api/teacher/assignments/{assignment_id}/analyze
 
 **字段说明：**
 
-| 字段                 | 类型   | 必填 | 说明                                                             |
-| -------------------- | ------ | ---- | ---------------------------------------------------------------- |
-| submission_ids       | array  | 是   | 参与分析的提交 ID 列表                                           |
-| similarity_threshold | number | 否   | 相似度告警阈值，默认 0.8（0.0~1.0）                              |
-| compare_dimensions   | array  | 否   | 比对维度，默认全部（structure, concept, expression, conclusion） |
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| submission_ids | array | 是 | 参与分析的提交 ID 列表 |
+| similarity_threshold | number | 否 | 相似度告警阈值，默认 0.8（0.0~1.0） |
+| compare_dimensions | array | 否 | 比对维度，默认全部（structure, concept, expression, conclusion） |
 
 **响应示例：**
 
@@ -628,10 +652,7 @@ POST /api/teacher/assignments/{assignment_id}/analyze
       }
     ],
     "common_issues": ["都没有结合具体场景举例"],
-    "teaching_suggestions": [
-      "课堂上补充进程状态转换案例",
-      "强调概念解释和例子结合"
-    ],
+    "teaching_suggestions": ["课堂上补充进程状态转换案例", "强调概念解释和例子结合"],
     "created_at": "2026-06-09T10:00:00+08:00"
   },
   "message": "analyzed"
@@ -643,7 +664,7 @@ POST /api/teacher/assignments/{assignment_id}/analyze
 ### 4.2 获取分析报告
 
 ```http
-GET /api/teacher/assignments/{assignment_id}/analyze-report
+GET /api/teacher/courses/{course_id}/assignments/{assignment_id}/analyze-report
 ```
 
 **响应示例：**

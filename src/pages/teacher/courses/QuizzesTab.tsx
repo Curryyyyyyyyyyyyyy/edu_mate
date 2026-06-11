@@ -189,6 +189,29 @@ export default function QuizzesTab({ courseId }: Props) {
     }))
   }
 
+  const setSingleAnswer = (questionId: string, key: string) => {
+    setQuestions((prev) => prev.map((question) => (
+      question.id === questionId ? { ...question, correct_answer: key } : question
+    )))
+  }
+
+  const toggleMultiAnswer = (questionId: string, key: string) => {
+    setQuestions((prev) => prev.map((question) => {
+      if (question.id !== questionId) return question
+      const selected = question.correct_answer
+        .split(',')
+        .map((answer) => answer.trim())
+        .filter(Boolean)
+      const index = selected.indexOf(key)
+      if (index >= 0) {
+        selected.splice(index, 1)
+      } else {
+        selected.push(key)
+      }
+      return { ...question, correct_answer: selected.join(',') }
+    }))
+  }
+
   const validate = () => {
     if (!title.trim()) return '请填写测验标题。'
     if (questions.length === 0) return '请至少添加一道题目。'
@@ -329,7 +352,40 @@ export default function QuizzesTab({ courseId }: Props) {
                 )}
 
                 <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                  <input value={question.correct_answer} onChange={(e) => updateQuestion(question.id, { correct_answer: e.target.value })} placeholder={question.question_type === 'multi_choice' ? '正确答案，如 A,C *' : '正确答案 *'} className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none" />
+                  {question.question_type === 'short_answer' ? (
+                    <input value={question.correct_answer} onChange={(e) => updateQuestion(question.id, { correct_answer: e.target.value })} placeholder="参考答案 *" className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none" />
+                  ) : question.question_type === 'multi_choice' ? (
+                    <div className="rounded-lg border border-slate-300 bg-white px-3 py-2">
+                      <p className="mb-1.5 text-xs font-medium text-slate-500">正确答案（可多选）*</p>
+                      <div className="flex flex-wrap gap-2">
+                        {question.options.map((option) => {
+                          const selected = question.correct_answer.split(',').map((a) => a.trim()).includes(option.key)
+                          return (
+                            <label key={option.key} className={`inline-flex cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-sm transition-colors ${selected ? 'border-blue-400 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'}`}>
+                              <input type="checkbox" checked={selected} onChange={() => toggleMultiAnswer(question.id, option.key)} className="accent-blue-600" />
+                              <span className="font-semibold">{option.key}</span>
+                              <span className="text-slate-500">·</span>
+                              <span>{option.text || `选项 ${option.key}`}</span>
+                            </label>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border border-slate-300 bg-white px-3 py-2">
+                      <p className="mb-1.5 text-xs font-medium text-slate-500">正确答案 *</p>
+                      <div className="flex flex-wrap gap-2">
+                        {question.options.map((option) => (
+                          <label key={option.key} className={`inline-flex cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-sm transition-colors ${question.correct_answer === option.key ? 'border-blue-400 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'}`}>
+                            <input type="radio" name={`correct_answer_${question.id}`} checked={question.correct_answer === option.key} onChange={() => setSingleAnswer(question.id, option.key)} className="accent-blue-600" />
+                            <span className="font-semibold">{option.key}</span>
+                            <span className="text-slate-500">·</span>
+                            <span>{option.text || `选项 ${option.key}`}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   <input value={question.explanation} onChange={(e) => updateQuestion(question.id, { explanation: e.target.value })} placeholder="答案解析（可选）" className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none" />
                 </div>
               </div>
