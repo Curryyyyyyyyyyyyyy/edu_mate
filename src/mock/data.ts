@@ -67,8 +67,12 @@ const STUDENT: UserInfo = {
   username: '20240101',
   name: '张三',
   role: 'student',
-  class_name: '计算机 2401 班',
-  profile: { interests: ['后端开发', '算法'], career_direction: 'backend', bio: '' },
+  extra: {
+    class_name: '计算机 2401 班',
+    interests: ['后端开发', '算法'],
+    career_direction: 'backend',
+    bio: '',
+  },
 }
 
 const TEACHER: UserInfo = {
@@ -76,6 +80,7 @@ const TEACHER: UserInfo = {
   username: 'T20240001',
   name: '李老师',
   role: 'teacher',
+  extra: {},
 }
 
 const MOCK_TOKEN = 'mock_jwt_token_xxx'
@@ -1366,7 +1371,7 @@ const TEACHER_COURSES_STORE: Record<string, {
     student_count: 35, section_count: 3,
     created_at: '2026-06-01T10:00:00+08:00', updated_at: '2026-06-01T10:00:00+08:00',
     students: [
-      { id: STUDENT.id, username: STUDENT.username, name: STUDENT.name, class_name: STUDENT.class_name || '', joined_at: '2026-06-04T10:30:00+08:00', total_score: 87.5 },
+      { id: STUDENT.id, username: STUDENT.username, name: STUDENT.name, class_name: STUDENT.extra.class_name || '', joined_at: '2026-06-04T10:30:00+08:00', total_score: 87.5 },
       { id: 'user_s2', username: '20240102', name: '李四', class_name: '计算机2401班', joined_at: '2026-06-04T11:00:00+08:00', total_score: 92 },
       { id: 'user_s3', username: '20240103', name: '王五', class_name: '计算机2401班', joined_at: '2026-06-04T11:30:00+08:00', total_score: 78 },
     ],
@@ -1489,10 +1494,11 @@ async function handleTeacherPublishAssignment(courseId: string, sectionId: strin
 async function handleTeacherGetAssignments(courseId: string): Promise<ApiResponse<unknown>> {
   await delay()
   const list = store.assignments[courseId] || []
+  const studentCount = TEACHER_COURSES_STORE[courseId]?.students.length || 0
   const items = list.map((a) => ({
     id: a.id, title: a.title, section_id: a.section_id, section_title: a.section_title,
     due_at: a.due_at, full_score: a.full_score, status: a.status,
-    submission_count: 0, total_students: 35,
+    submission_count: studentCount, total_students: studentCount,
   }))
   return { success: true, data: { course_id: courseId, items, total: items.length }, message: 'ok' }
 }
@@ -1516,7 +1522,9 @@ async function handleTeacherGetSubmissions(_courseId: string, asgId: string): Pr
   const items = TEACHER_COURSES_STORE['course_001']?.students.map((s) => ({
     id: uid('submission'), student_id: s.id, student_name: s.name,
     submit_type: 'text' as const, submitted_at: new Date(Date.now() - Math.random() * 86400000 * 3).toISOString(),
-    status: 'submitted', score: null, confirmed: false,
+    status: 'submitted', score: null, confirmed: false, graded: false,
+    content: '本次作业围绕核心概念进行分析，结合课堂案例说明关键状态之间的转换条件，并给出自己的理解。',
+    extracted_text: null, file_url: null, ai_score: null, comments: null, teacher_comment: null,
   })) || []
   return { success: true, data: { assignment_id: asgId, items, total: items.length }, message: 'ok' }
 }

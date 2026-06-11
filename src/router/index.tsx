@@ -5,10 +5,10 @@ import TeacherLayout from '../components/TeacherLayout'
 import LoginPage from '../pages/auth/login'
 import RegisterPage from '../pages/auth/register'
 import StudentCoursePage from '../pages/student/courses'
+import TeacherAccountPage from '../pages/teacher/account'
 import TeacherCoursePage from '../pages/teacher/courses'
 
 const router = createBrowserRouter([
-  // 公开路由（无需登录）
   {
     path: '/auth/login',
     element: <LoginPage />,
@@ -17,8 +17,6 @@ const router = createBrowserRouter([
     path: '/auth/register',
     element: <RegisterPage />,
   },
-
-  // 学生端路由
   {
     path: '/student',
     element: (
@@ -37,8 +35,6 @@ const router = createBrowserRouter([
       },
     ],
   },
-
-  // 教师端路由
   {
     path: '/teacher',
     element: (
@@ -52,13 +48,15 @@ const router = createBrowserRouter([
         element: <TeacherCoursePage />,
       },
       {
+        path: 'account',
+        element: <TeacherAccountPage />,
+      },
+      {
         path: 'courses/:courseId',
         element: <TeacherCoursePage />,
       },
     ],
   },
-
-  // 兜底
   {
     path: '/',
     element: <Navigate to="/auth/login" replace />,

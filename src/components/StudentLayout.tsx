@@ -137,7 +137,7 @@ export default function StudentLayout() {
           <div className="mb-3 rounded-lg bg-slate-50 px-3 py-2.5">
             <p className="text-sm font-medium text-slate-800">{user?.name}</p>
             <p className="text-xs text-slate-500">
-              {user?.class_name || user?.username || ''}
+              {user?.extra?.class_name || user?.username || ''}
             </p>
           </div>
           <button

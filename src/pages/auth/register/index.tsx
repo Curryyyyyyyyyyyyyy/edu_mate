@@ -83,6 +83,7 @@ export default function RegisterPage() {
         const res = await registerTeacher({
           username: tUsername,
           name: tName,
+          courses: [],
           password: tPassword,
         })
         if (res.success) {
