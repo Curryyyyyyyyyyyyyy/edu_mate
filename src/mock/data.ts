@@ -5,6 +5,7 @@
  */
 import type {
   ApiResponse,
+  UploadResult,
   LoginData,
   RegisterData,
   UserInfo,
@@ -25,6 +26,26 @@ import type {
   LearningPlanData,
   LearningPlanListItem,
   PlanProgress,
+  StudentAnnouncementItem,
+  StudentAnnouncementListData,
+  AnnouncementDetail,
+  DiscussionItem,
+  DiscussionDetail,
+  DiscussionReply,
+  DiscussionListData,
+  DiscussionAuthor,
+  QuestionItem,
+  QuestionListData,
+  QuestionAnswer,
+  StudentQuizItem,
+  StudentQuizListData,
+  StudentQuizDetail,
+  StudentQuizQuestion,
+  QuizStartData,
+  QuizResultData,
+  QuizAnswerResult,
+  ScoreRecord,
+  StudentCourseScoresData,
 } from '../types/api'
 
 // ═══════════════════════════════════════════════════════════════
@@ -145,6 +166,7 @@ const store = {
 
   submissions: {} as Record<string, {
     id: string; assignment_id: string; submit_type: 'text' | 'file'; content: string;
+    file_urls?: string[];
     submitted_at: string; score: number | null; ai_score: number | null;
     comments: string | null; deductions: { point: string; minus: number }[];
     suggestions: string[]; teacher_comment: string | null; graded_at: string | null;
@@ -161,6 +183,23 @@ const store = {
 
   learningPlans: {} as Record<string, LearningPlanData[]>,
   planProgress: {} as Record<string, PlanProgress>,
+
+  // 公告
+  announcements: {} as Record<string, AnnouncementDetail[]>,
+
+  // 讨论
+  discussions: {} as Record<string, DiscussionDetail[]>,
+
+  // 问答
+  questions: {} as Record<string, QuestionItem[]>,
+
+  // 测验（教师端创建的数据）
+  quizzes: {} as Record<string, StudentQuizDetail[]>,
+  // 测验尝试记录
+  quizAttempts: {} as Record<string, { attempt_id: string; quiz_id: string; answers: Record<string, string>; submitted: boolean; result?: QuizResultData }>,
+
+  // 成绩记录
+  scoreRecords: {} as Record<string, StudentCourseScoresData>,
 }
 
 // 初始化一些测试数据
@@ -220,6 +259,146 @@ store.planProgress['plan_001'] = {
   ],
 }
 
+// 公告
+store.announcements['course_001'] = [
+  { id: 'notice_001', course_id: 'course_001', title: '📌 期中考试通知', content: '各位同学好，\n\n操作系统课程期中考试将于 6 月 25 日（周三）上午 9:00-11:00 在 3 号教学楼 301 教室进行。\n\n考试范围：第 1-3 章（进程管理、内存管理、文件系统）\n考试形式：闭卷笔试\n\n请同学们提前复习，重点掌握：\n1. 进程状态转换\n2. 调度算法（FCFS、SJF、时间片轮转、优先级）\n3. 内存分页与分段\n4. 文件系统层次结构\n\n如有疑问请在学习群或讨论区提出。\n\n祝大家考试顺利！📚', is_pinned: true, created_at: '2026-06-10T09:00:00+08:00', updated_at: '2026-06-10T09:00:00+08:00' },
+  { id: 'notice_002', course_id: 'course_001', title: '作业提交截止提醒', content: '提醒各位同学：\n\n📝 进程管理练习 截止日期为 6 月 15 日\n📝 调度算法分析 截止日期为 6 月 20 日\n\n请务必在截止日期前完成提交，逾期将不再接受补交。作业成绩会纳入期末总评。', is_pinned: false, created_at: '2026-06-08T14:00:00+08:00' },
+  { id: 'notice_003', course_id: 'course_001', title: '关于实验课安排调整', content: '原定于本周五的实验课因故调整至下周一（6 月 16 日）下午 2:00，地点不变（机房 401）。\n\n实验内容：进程调度算法模拟实现\n\n请提前预习实验指导书第三章内容。', is_pinned: false, created_at: '2026-06-07T16:30:00+08:00' },
+]
+
+// 讨论
+const studentAuthor: DiscussionAuthor = { id: STUDENT.id, name: STUDENT.name, role: 'student' }
+const teacherAuthor: DiscussionAuthor = { id: TEACHER.id, name: TEACHER.name, role: 'teacher' }
+
+store.discussions['course_001'] = [
+  {
+    id: 'disc_001', course_id: 'course_001', section_id: 'section_001', section_title: '第一章：进程管理',
+    title: '进程和线程的区别到底是什么？', content: '我在看课件的时候对进程和线程的区别还是有些模糊。课件里说进程是资源分配的基本单位，线程是CPU调度的基本单位。但在实际编程中怎么体现这个区别呢？有没有同学可以帮忙解释一下？',
+    status: 'open', reply_count: 3, created_by: { ...studentAuthor }, last_reply_at: '2026-06-11T10:30:00+08:00', created_at: '2026-06-09T20:00:00+08:00',
+    replies: {
+      items: [
+        { id: 'reply_001', content: '简单来说，进程之间是独立的，每个进程有自己的内存空间；而同一进程内的线程共享内存空间。所以线程间通信更方便，但一个线程崩溃可能影响整个进程。', author: { id: 'user_s2', name: '李四', role: 'student' }, is_teacher: false, created_at: '2026-06-10T15:00:00+08:00' },
+        { id: 'reply_002', content: '李四同学说得很好。补充一点：在实际编程中，比如用 Python 的 multiprocessing 模块创建的是进程，它们各自有独立的 Python 解释器；而 threading 模块创建的是线程，共享全局变量。这也是为什么 Python 有 GIL 限制但多进程不受影响。', author: { ...teacherAuthor }, is_teacher: true, created_at: '2026-06-10T18:00:00+08:00' },
+        { id: 'reply_003', content: '谢谢老师和同学的解释，现在清楚多了！那请问有没有推荐的练习可以帮助理解？', author: { ...studentAuthor }, is_teacher: false, created_at: '2026-06-11T10:30:00+08:00' },
+      ],
+      total: 3, page: 1, page_size: 20,
+    },
+  },
+  {
+    id: 'disc_002', course_id: 'course_001', section_id: 'section_002', section_title: '第二章：内存管理',
+    title: '分页和分段在实际系统中怎么用的？', content: '课件里介绍了分页和分段两种内存管理方式，但我想知道现代操作系统（比如 Linux）实际用的是哪种？还是混合使用？',
+    status: 'open', reply_count: 1, created_by: { id: 'user_s2', name: '李四', role: 'student' }, last_reply_at: '2026-06-11T09:00:00+08:00', created_at: '2026-06-10T22:00:00+08:00',
+    replies: {
+      items: [
+        { id: 'reply_004', content: 'Linux 主要使用分页机制，但也支持分段。实际上 x86 架构同时支持分段和分页，但 Linux 尽量弱化了分段的使用，主要通过分页来管理内存。可以查阅《深入理解 Linux 内核》相关章节了解更多。', author: { ...teacherAuthor }, is_teacher: true, created_at: '2026-06-11T09:00:00+08:00' },
+      ],
+      total: 1, page: 1, page_size: 20,
+    },
+  },
+]
+
+// 问答
+store.questions['course_001'] = [
+  {
+    id: 'q_001', course_id: 'course_001', section_id: 'section_001', section_title: '第一章：进程管理',
+    title: '多级反馈队列调度算法中，为什么短作业可能会被饿死？',
+    content: '课件里提到多级反馈队列可能会让短作业饿死，但短作业不是优先级更高吗？有点不太理解这个逻辑。',
+    visibility: 'public', status: 'answered',
+    asked_by: { id: STUDENT.id, name: STUDENT.name },
+    answer: {
+      content: '多级反馈队列调度中确实存在短作业饿死的问题，但这不是因为短作业优先级低，恰恰相反——是因为长作业可能一直得不到 CPU。\n\n具体来说：新作业进入最高优先级队列，如果用完时间片还没完成，就降到下一级。短作业在第一级或第二级就能完成，而长作业会一直被降级。如果系统持续有新作业进入（短作业），高优先级队列总有任务，长作业在高优先级队列的时间片又很短，还没来得及执行多少就被抢占，然后降到更低优先级——这样一来，长作业可能永远得不到足够的 CPU 时间。\n\n解决方法：可以周期性地提升所有作业到最高优先级（老化机制），确保长作业也有机会执行。',
+      answered_by: { id: TEACHER.id, name: TEACHER.name },
+      answered_at: '2026-06-11T14:00:00+08:00',
+    },
+    created_at: '2026-06-11T10:00:00+08:00', answered_at: '2026-06-11T14:00:00+08:00',
+  },
+  {
+    id: 'q_002', course_id: 'course_001', section_id: 'section_002', section_title: '第二章：内存管理',
+    title: '虚拟内存的页面置换算法在实际中哪个更好？',
+    visibility: 'public', status: 'unanswered',
+    asked_by: { id: 'user_s2', name: '李四' },
+    created_at: '2026-06-11T16:00:00+08:00',
+  },
+]
+
+// 测验
+store.quizzes['course_001'] = [
+  {
+    id: 'quiz_001', course_id: 'course_001', title: '进程管理基础测验', description: '测试对进程概念、状态转换和调度算法的理解',
+    section_id: 'section_001', time_limit_minutes: 30,
+    questions: [
+      { id: 'qzq_001', question_type: 'single_choice', content: '在操作系统中，进程是（ ）。', options: [
+        { key: 'A', text: '程序的执行过程，是资源分配和调度的基本单位' },
+        { key: 'B', text: '一段静态的代码' },
+        { key: 'C', text: 'CPU 执行的指令序列' },
+        { key: 'D', text: '内存中的一个数据结构' },
+      ], score: 10, order: 1 },
+      { id: 'qzq_002', question_type: 'single_choice', content: '进程从执行状态变为阻塞状态的原因是（ ）。', options: [
+        { key: 'A', text: '时间片用完' },
+        { key: 'B', text: '被高优先级进程抢占' },
+        { key: 'C', text: '等待 I/O 操作完成' },
+        { key: 'D', text: '进程创建完成' },
+      ], score: 10, order: 2 },
+      { id: 'qzq_003', question_type: 'true_false', content: '在时间片轮转调度算法中，时间片设置得越小，系统响应时间一定越快。', options: [
+        { key: 'true', text: '正确' }, { key: 'false', text: '错误' }
+      ], score: 10, order: 3 },
+      { id: 'qzq_004', question_type: 'multi_choice', content: '以下哪些属于进程调度算法的评价指标？（多选）', options: [
+        { key: 'A', text: 'CPU 利用率' },
+        { key: 'B', text: '吞吐量' },
+        { key: 'C', text: '周转时间' },
+        { key: 'D', text: '等待时间' },
+        { key: 'E', text: '内存使用率' },
+      ], score: 15, order: 4 },
+      { id: 'qzq_005', question_type: 'short_answer', content: '请简要说明死锁产生的四个必要条件。', score: 15, order: 5 },
+    ] as StudentQuizQuestion[],
+  },
+  {
+    id: 'quiz_002', course_id: 'course_001', title: '内存管理综合测验', description: '考察内存分页、分段和虚拟内存的综合理解',
+    section_id: 'section_002', time_limit_minutes: 45,
+    questions: [
+      { id: 'qzq_006', question_type: 'single_choice', content: '分页存储管理中，页面的大小一般是（ ）。', options: [
+        { key: 'A', text: '512 B' },
+        { key: 'B', text: '4 KB' },
+        { key: 'C', text: '64 KB' },
+        { key: 'D', text: '1 MB' },
+      ], score: 10, order: 1 },
+      { id: 'qzq_007', question_type: 'true_false', content: '虚拟内存的容量受计算机地址位数的限制。', options: [
+        { key: 'true', text: '正确' }, { key: 'false', text: '错误' }
+      ], score: 10, order: 2 },
+      { id: 'qzq_008', question_type: 'short_answer', content: '请简述 LRU（最近最久未使用）页面置换算法的基本思想及其优缺点。', score: 20, order: 3 },
+    ] as StudentQuizQuestion[],
+  },
+]
+
+// 测验尝试记录（预置已完成的 quiz_001 尝试）
+store.quizAttempts['quiz_001_user_student_01'] = {
+  attempt_id: 'attempt_001',
+  quiz_id: 'quiz_001',
+  answers: { qzq_001: 'A', qzq_002: 'C', qzq_003: 'false', qzq_004: 'A,B,C,D', qzq_005: '互斥条件、占有且等待、不可剥夺、循环等待' },
+  submitted: true,
+  result: {
+    attempt_id: 'attempt_001',
+    total_score: 45,
+    full_score: 60,
+    results: [
+      { question_id: 'qzq_001', is_correct: true, score: 10, ai_feedback: '回答正确！', correct_answer: 'A', explanation: '进程是程序的一次执行过程，是系统进行资源分配和调度的基本单位。' },
+      { question_id: 'qzq_002', is_correct: true, score: 10, ai_feedback: '回答正确！', correct_answer: 'C', explanation: '进程因等待 I/O 操作等事件而进入阻塞状态。' },
+      { question_id: 'qzq_003', is_correct: true, score: 10, ai_feedback: '回答正确！', correct_answer: 'false', explanation: '时间片过小会导致上下文切换开销过大，反而降低系统效率。' },
+      { question_id: 'qzq_004', is_correct: false, score: 5, ai_feedback: '部分正确，内存使用率不属于调度算法评价指标。', correct_answer: 'A,B,C,D', explanation: 'CPU利用率、吞吐量、周转时间、等待时间是调度算法的四个主要评价指标。' },
+      { question_id: 'qzq_005', is_correct: true, score: 10, ai_feedback: '回答正确，四个必要条件表述完整。', correct_answer: '互斥条件、占有且等待、不可剥夺、循环等待', explanation: '死锁的四个必要条件缺一不可，破坏其中任一条件即可预防死锁。' },
+    ],
+  },
+}
+
+// 成绩记录
+store.scoreRecords['course_001'] = {
+  course_id: 'course_001', course_name: '操作系统', total_score: 87.5, rank: 8, total_students: 35,
+  records: [
+    { assignment_id: 'asg_001', assignment_title: '进程管理练习', section_title: '第一章：进程管理', full_score: 100, score: 88, ai_score: 86, deductions: [{ point: '进程状态转换条件说明不完整', minus: 6 }], suggestions: ['补充阻塞态与就绪态的转换条件', '加强对进程定义的关键词记忆'], teacher_comment: '整体答得不错，扣分项需要认真复习课本相关内容。', graded_at: '2026-06-09T10:00:00+08:00' },
+    { assignment_id: 'asg_005', assignment_title: '链表反转练习', section_title: '第一章：线性表', full_score: 100, score: 95, ai_score: 95, deductions: [], suggestions: ['继续保持！'], teacher_comment: null, graded_at: '2026-06-10T14:00:00+08:00' },
+  ] as ScoreRecord[],
+}
+
 // ═══════════════════════════════════════════════════════════════
 // Mock API 处理函数导出
 // ═══════════════════════════════════════════════════════════════
@@ -241,6 +420,11 @@ export function mockHandle(method: string, url: string, data?: unknown): Promise
   }
   if (method === 'GET' && path === '/api/auth/me') {
     return handleGetMe()
+  }
+
+  // ── 文件上传（独立接口，任意已登录用户可用）───────────
+  if (method === 'POST' && path === '/api/upload') {
+    return handleUpload(data)
   }
 
   // ── 课程 ──────────────────────────────────────────────
@@ -335,6 +519,78 @@ export function mockHandle(method: string, url: string, data?: unknown): Promise
   }
   if (method === 'POST' && planListMatch) {
     return handleCreateLearningPlan(planListMatch[1], data)
+  }
+
+  // ── 公告（学生端）────────────────────────────────────
+  const noticeDetailMatch = path.match(/^\/api\/courses\/([^/]+)\/announcements\/([^/]+)$/)
+  if (method === 'GET' && noticeDetailMatch) {
+    return handleGetAnnouncement(noticeDetailMatch[1], noticeDetailMatch[2])
+  }
+  const noticeListMatch = path.match(/^\/api\/courses\/([^/]+)\/announcements$/)
+  if (method === 'GET' && noticeListMatch) {
+    return handleGetStudentAnnouncements(noticeListMatch[1])
+  }
+
+  // ── 讨论（学生端）────────────────────────────────────
+  const discReplyMatch = path.match(/^\/api\/courses\/([^/]+)\/discussions\/([^/]+)\/replies\/([^/]+)$/)
+  if (method === 'DELETE' && discReplyMatch) {
+    return handleDeleteDiscussionReply(discReplyMatch[1], discReplyMatch[2], discReplyMatch[3])
+  }
+  const discReplyCreateMatch = path.match(/^\/api\/courses\/([^/]+)\/discussions\/([^/]+)\/replies$/)
+  if (method === 'POST' && discReplyCreateMatch) {
+    return handleCreateDiscussionReply(discReplyCreateMatch[1], discReplyCreateMatch[2], data)
+  }
+  const discDetailMatch = path.match(/^\/api\/courses\/([^/]+)\/discussions\/([^/]+)$/)
+  if (method === 'GET' && discDetailMatch) {
+    return handleGetDiscussion(discDetailMatch[1], discDetailMatch[2])
+  }
+  const discListMatch = path.match(/^\/api\/courses\/([^/]+)\/discussions$/)
+  if (method === 'GET' && discListMatch) {
+    return handleGetDiscussions(discListMatch[1])
+  }
+  if (method === 'POST' && discListMatch) {
+    return handleCreateDiscussion(discListMatch[1], data)
+  }
+
+  // ── 问答（学生端）────────────────────────────────────
+  const qDetailMatch = path.match(/^\/api\/courses\/([^/]+)\/questions\/([^/]+)$/)
+  if (method === 'GET' && qDetailMatch) {
+    return handleGetQuestion(qDetailMatch[1], qDetailMatch[2])
+  }
+  const qListMatch = path.match(/^\/api\/courses\/([^/]+)\/questions$/)
+  if (method === 'GET' && qListMatch) {
+    return handleGetQuestions(qListMatch[1])
+  }
+  if (method === 'POST' && qListMatch) {
+    return handleCreateQuestion(qListMatch[1], data)
+  }
+
+  // ── 测验（学生端）────────────────────────────────────
+  const quizResultMatch = path.match(/^\/api\/student\/courses\/([^/]+)\/quizzes\/([^/]+)\/attempts\/([^/]+)\/result$/)
+  if (method === 'GET' && quizResultMatch) {
+    return handleGetQuizResult(quizResultMatch[1], quizResultMatch[2], quizResultMatch[3])
+  }
+  const quizSubmitMatch = path.match(/^\/api\/student\/courses\/([^/]+)\/quizzes\/([^/]+)\/attempts\/([^/]+)\/submit$/)
+  if (method === 'POST' && quizSubmitMatch) {
+    return handleSubmitQuiz(quizSubmitMatch[1], quizSubmitMatch[2], quizSubmitMatch[3], data)
+  }
+  const quizStartMatch = path.match(/^\/api\/student\/courses\/([^/]+)\/quizzes\/([^/]+)\/start$/)
+  if (method === 'POST' && quizStartMatch) {
+    return handleStartQuiz(quizStartMatch[1], quizStartMatch[2])
+  }
+  const quizDetailMatch = path.match(/^\/api\/student\/courses\/([^/]+)\/quizzes\/([^/]+)$/)
+  if (method === 'GET' && quizDetailMatch) {
+    return handleGetStudentQuiz(quizDetailMatch[1], quizDetailMatch[2])
+  }
+  const quizListMatch = path.match(/^\/api\/student\/courses\/([^/]+)\/quizzes$/)
+  if (method === 'GET' && quizListMatch) {
+    return handleGetStudentQuizzes(quizListMatch[1])
+  }
+
+  // ── 成绩（学生端）────────────────────────────────────
+  const scoreMatch = path.match(/^\/api\/student\/courses\/([^/]+)\/scores$/)
+  if (method === 'GET' && scoreMatch) {
+    return handleGetStudentCourseScores(scoreMatch[1])
   }
 
   // ── 教师端 ──────────────────────────────────────────────
@@ -447,6 +703,42 @@ async function handleGetMe(): Promise<ApiResponse<UserInfo>> {
   await delay()
   const u = store.currentUser || JSON.parse(localStorage.getItem('user') || 'null') || STUDENT
   return { success: true, data: u, message: 'ok' }
+}
+
+async function handleUpload(data: unknown): Promise<ApiResponse<UploadResult>> {
+  await delay(200)
+  let fileName = 'unknown_file'
+  let fileSize = 0
+
+  if (data instanceof FormData) {
+    const file = data.get('file') as File | null
+    if (file) {
+      fileName = file.name
+      fileSize = file.size
+    }
+  }
+
+  // 生成模拟的 file_url
+  const fileId = Math.random().toString(36).substring(2, 8)
+  const safeName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_')
+  const fileUrl = `/files/uploads/${fileId}_${safeName}`
+
+  // 对文本类文件模拟提取文本
+  const isTextBased = /\.(txt|pdf|doc|docx)$/i.test(fileName)
+  const extractedText = isTextBased
+    ? `[Mock 提取文本] 文件 ${fileName} 的内容提取结果。`
+    : null
+
+  return {
+    success: true,
+    data: {
+      file_url: fileUrl,
+      file_name: fileName,
+      file_size: fileSize,
+      extracted_text: extractedText,
+    },
+    message: 'uploaded',
+  }
 }
 
 async function handleGetCourses(): Promise<ApiResponse<{ items: StudentCourseItem[]; total: number }>> {
@@ -570,19 +862,37 @@ async function handleGetAssignmentDetail(courseId: string, asgId: string): Promi
 
 async function handleSubmitAssignment(_courseId: string, asgId: string, data: unknown): Promise<ApiResponse<SubmissionData>> {
   await delay(400)
-  let submitType: 'text' | 'file' = 'text'
+  let submitType: 'text' | 'file' | 'mixed' = 'text'
   let content = ''
+  let fileUrls: string[] | undefined
 
   if (data instanceof FormData) {
-    // FormData 提交（文件或文本）
     const fd = data
     const typeField = fd.get('submit_type') as string
-    submitType = typeField === 'file' ? 'file' : 'text'
-    if (submitType === 'file') {
-      const file = fd.get('file') as File | null
-      content = file ? `[文件上传] ${file.name} (${(file.size / 1024).toFixed(1)} KB)` : ''
-    } else {
-      content = (fd.get('content') as string) || ''
+    submitType = (typeField === 'file' || typeField === 'mixed' || typeField === 'text') ? typeField : 'text'
+
+    // 文本内容
+    const textContent = fd.get('content') as string | null
+    if (textContent) content = textContent
+
+    // 优先读取 file_urls 字段（新 API 两步流程：先上传再提交）
+    const fileUrlsField = fd.get('file_urls') as string | null
+    if (fileUrlsField) {
+      fileUrls = fileUrlsField.split(',').map((u) => u.trim()).filter(Boolean)
+    }
+
+    // 向后兼容：旧 API 直接从 FormData 发送文件对象（fallback）
+    if (!fileUrls || fileUrls.length === 0) {
+      const files = fd.getAll('files') as File[]
+      const singleFile = fd.get('file') as File | null
+      const allFiles = files.length > 0 ? files : (singleFile ? [singleFile] : [])
+
+      if (allFiles.length > 0) {
+        fileUrls = allFiles.map((f) => `/files/uploads/${f.name}`)
+        if (!content) {
+          content = allFiles.map((f) => `[文件上传] ${f.name} (${(f.size / 1024).toFixed(1)} KB)`).join('\n')
+        }
+      }
     }
   } else if (typeof data === 'object' && data !== null) {
     // JSON 提交（文本模式）
@@ -592,20 +902,21 @@ async function handleSubmitAssignment(_courseId: string, asgId: string, data: un
   }
 
   const sub = {
-    id: uid('submission'), assignment_id: asgId, submit_type: submitType as 'text' | 'file', content,
+    id: uid('submission'), assignment_id: asgId, submit_type: submitType, content,
+    file_urls: fileUrls,
     submitted_at: new Date().toISOString(),
     score: null, ai_score: null, comments: null, deductions: [], suggestions: [],
     teacher_comment: null, graded_at: null,
   }
   store.submissions[asgId] = sub
-  return { success: true, data: { id: sub.id, assignment_id: asgId, student_id: STUDENT.id, submit_type: submitType, submitted_at: sub.submitted_at, status: 'submitted' }, message: 'submitted' }
+  return { success: true, data: { id: sub.id, assignment_id: asgId, student_id: STUDENT.id, submit_type: submitType, content: content || undefined, file_urls: fileUrls, submitted_at: sub.submitted_at, status: 'submitted' }, message: 'submitted' }
 }
 
 async function handleGetMySubmission(_courseId: string, asgId: string): Promise<ApiResponse<MySubmissionData | null>> {
   await delay()
   const sub = store.submissions[asgId]
   if (!sub) return { success: true, data: null as unknown as MySubmissionData, message: 'ok' }
-  return { success: true, data: { id: sub.id, assignment_id: sub.assignment_id, submit_type: sub.submit_type, file_url: null, submitted_at: sub.submitted_at, status: 'submitted', score: sub.score, ai_score: sub.ai_score, comments: sub.comments, deductions: sub.deductions, suggestions: sub.suggestions, teacher_comment: sub.teacher_comment, graded_at: sub.graded_at }, message: 'ok' }
+  return { success: true, data: { id: sub.id, assignment_id: sub.assignment_id, submit_type: sub.submit_type, file_url: sub.file_urls?.[0] ?? null, file_urls: sub.file_urls, content: sub.content, submitted_at: sub.submitted_at, status: 'submitted', score: sub.score, ai_score: sub.ai_score, comments: sub.comments, deductions: sub.deductions, suggestions: sub.suggestions, teacher_comment: sub.teacher_comment, graded_at: sub.graded_at }, message: 'ok' }
 }
 
 async function handleCreateSummary(courseId: string, data: unknown): Promise<ApiResponse<SummaryDetail>> {
@@ -766,6 +1077,276 @@ async function handleGetPlanProgress(_courseId: string, planId: string): Promise
   if (progress) return { success: true, data: progress, message: 'ok' }
   // 返回空进度
   return { success: true, data: { plan_id: planId, version: 1, total_days: 0, completed_days: 0, completion_rate: 0, tasks: [] }, message: 'ok' }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 公告 Mock 处理函数
+// ═══════════════════════════════════════════════════════════════
+
+async function handleGetStudentAnnouncements(courseId: string): Promise<ApiResponse<StudentAnnouncementListData>> {
+  await delay()
+  const items: StudentAnnouncementItem[] = (store.announcements[courseId] || []).map((a) => ({
+    id: a.id, title: a.title, content: a.content, is_pinned: a.is_pinned,
+    is_read: a.id !== 'notice_001', // 模拟第一条未读
+    created_at: a.created_at,
+  }))
+  const unreadCount = items.filter((i) => !i.is_read).length
+  return { success: true, data: { course_id: courseId, unread_count: unreadCount, items, total: items.length }, message: 'ok' }
+}
+
+async function handleGetAnnouncement(courseId: string, noticeId: string): Promise<ApiResponse<AnnouncementDetail>> {
+  await delay()
+  const list = store.announcements[courseId] || []
+  const a = list.find((x) => x.id === noticeId)
+  if (!a) throw { response: { status: 404 } }
+  return { success: true, data: a, message: 'ok' }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 讨论 Mock 处理函数
+// ═══════════════════════════════════════════════════════════════
+
+async function handleGetDiscussions(courseId: string): Promise<ApiResponse<DiscussionListData>> {
+  await delay()
+  const items: DiscussionItem[] = (store.discussions[courseId] || []).map((d) => ({
+    id: d.id, course_id: d.course_id, section_id: d.section_id, section_title: d.section_title,
+    title: d.title, content: d.content, status: d.status, reply_count: d.reply_count,
+    created_by: d.created_by, last_reply_at: d.last_reply_at, created_at: d.created_at,
+  }))
+  return { success: true, data: { course_id: courseId, items, total: items.length }, message: 'ok' }
+}
+
+async function handleGetDiscussion(courseId: string, discussionId: string): Promise<ApiResponse<DiscussionDetail>> {
+  await delay()
+  const list = store.discussions[courseId] || []
+  const d = list.find((x) => x.id === discussionId)
+  if (!d) throw { response: { status: 404 } }
+  return { success: true, data: { ...d, content: d.content }, message: 'ok' }
+}
+
+async function handleCreateDiscussion(courseId: string, data: unknown): Promise<ApiResponse<DiscussionItem>> {
+  await delay(400)
+  const body = data as { title: string; content: string; section_id?: string }
+
+  const newDisc: DiscussionDetail = {
+    id: uid('disc'), course_id: courseId, title: body.title, content: body.content,
+    section_id: body.section_id, status: 'open', reply_count: 0,
+    created_by: { id: STUDENT.id, name: STUDENT.name, role: 'student' as const },
+    last_reply_at: undefined, created_at: new Date().toISOString(),
+    replies: { items: [], total: 0, page: 1, page_size: 20 },
+  }
+  if (!store.discussions[courseId]) store.discussions[courseId] = []
+  store.discussions[courseId].push(newDisc)
+
+  return { success: true, data: { id: newDisc.id, title: newDisc.title, status: newDisc.status, reply_count: 0, created_by: newDisc.created_by, created_at: newDisc.created_at }, message: 'created' }
+}
+
+async function handleCreateDiscussionReply(courseId: string, discussionId: string, data: unknown): Promise<ApiResponse<DiscussionReply>> {
+  await delay(400)
+  const body = data as { content: string }
+  const list = store.discussions[courseId] || []
+  const disc = list.find((x) => x.id === discussionId)
+  if (!disc) throw { response: { status: 404 } }
+
+  const reply: DiscussionReply = {
+    id: uid('reply'), content: body.content,
+    author: { id: STUDENT.id, name: STUDENT.name, role: 'student' as const },
+    is_teacher: false, created_at: new Date().toISOString(),
+  }
+  disc.replies.items.push(reply)
+  disc.replies.total = disc.replies.items.length
+  disc.reply_count = disc.replies.total
+  disc.last_reply_at = reply.created_at
+
+  return { success: true, data: reply, message: 'created' }
+}
+
+async function handleDeleteDiscussionReply(courseId: string, discussionId: string, replyId: string): Promise<ApiResponse<{ id: string }>> {
+  await delay()
+  const list = store.discussions[courseId] || []
+  const disc = list.find((x) => x.id === discussionId)
+  if (!disc) throw { response: { status: 404 } }
+  disc.replies.items = disc.replies.items.filter((r) => r.id !== replyId)
+  disc.replies.total = disc.replies.items.length
+  disc.reply_count = disc.replies.total
+  return { success: true, data: { id: replyId }, message: 'deleted' }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 问答 Mock 处理函数
+// ═══════════════════════════════════════════════════════════════
+
+async function handleGetQuestions(courseId: string): Promise<ApiResponse<QuestionListData>> {
+  await delay()
+  const items = store.questions[courseId] || []
+  return { success: true, data: { course_id: courseId, items, total: items.length }, message: 'ok' }
+}
+
+async function handleGetQuestion(courseId: string, questionId: string): Promise<ApiResponse<QuestionItem>> {
+  await delay()
+  const list = store.questions[courseId] || []
+  const q = list.find((x) => x.id === questionId)
+  if (!q) throw { response: { status: 404 } }
+  return { success: true, data: q, message: 'ok' }
+}
+
+async function handleCreateQuestion(courseId: string, data: unknown): Promise<ApiResponse<QuestionItem>> {
+  await delay(400)
+  const body = data as { title: string; content?: string; visibility: 'public' | 'private'; section_id?: string }
+
+  const newQ: QuestionItem = {
+    id: uid('question'), course_id: courseId, title: body.title, content: body.content,
+    section_id: body.section_id, visibility: body.visibility || 'public',
+    status: 'unanswered', asked_by: { id: STUDENT.id, name: STUDENT.name },
+    created_at: new Date().toISOString(),
+  }
+  if (!store.questions[courseId]) store.questions[courseId] = []
+  store.questions[courseId].push(newQ)
+
+  return { success: true, data: newQ, message: 'created' }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 测验 Mock 处理函数
+// ═══════════════════════════════════════════════════════════════
+
+async function handleGetStudentQuizzes(courseId: string): Promise<ApiResponse<StudentQuizListData>> {
+  await delay()
+  const quizzes = store.quizzes[courseId] || []
+  const items: StudentQuizItem[] = quizzes.map((q) => {
+    // 查找该用户是否有尝试记录
+    const attemptKey = `${q.id}_${STUDENT.id}`
+    const attempt = store.quizAttempts[attemptKey]
+    return {
+      id: q.id, title: q.title, section_id: q.section_id,
+      question_count: q.questions.length, time_limit_minutes: q.time_limit_minutes,
+      attempt_status: attempt ? (attempt.submitted ? 'submitted' as const : 'in_progress' as const) : null,
+      score: attempt?.result?.total_score ?? null,
+    }
+  })
+  return { success: true, data: { course_id: courseId, items, total: items.length }, message: 'ok' }
+}
+
+async function handleGetStudentQuiz(courseId: string, quizId: string): Promise<ApiResponse<StudentQuizDetail>> {
+  await delay()
+  const quizzes = store.quizzes[courseId] || []
+  const q = quizzes.find((x) => x.id === quizId)
+  if (!q) throw { response: { status: 404 } }
+  // 查找已有的 attempt
+  const attemptKey = `${quizId}_${STUDENT.id}`
+  const attempt = store.quizAttempts[attemptKey]
+
+  // StudentQuizDetail 不包含 correct_answer
+  const detail: StudentQuizDetail = {
+    id: q.id, course_id: q.course_id, title: q.title, description: q.description,
+    section_id: q.section_id, time_limit_minutes: q.time_limit_minutes,
+    questions: q.questions.map(({ id, question_type, content, options, score, order }) => ({
+      id, question_type, content, options, score, order,
+    })),
+    attempt: attempt ? {
+      id: attempt.attempt_id,
+      status: attempt.submitted ? 'submitted' : 'in_progress',
+      total_score: attempt.result?.total_score ?? null,
+      started_at: new Date().toISOString(),
+    } : null,
+  }
+  return { success: true, data: detail, message: 'ok' }
+}
+
+async function handleStartQuiz(courseId: string, quizId: string): Promise<ApiResponse<QuizStartData>> {
+  await delay()
+  const quizzes = store.quizzes[courseId] || []
+  const q = quizzes.find((x) => x.id === quizId)
+  if (!q) throw { response: { status: 404 } }
+  const attemptKey = `${quizId}_${STUDENT.id}`
+  const existing = store.quizAttempts[attemptKey]
+  if (existing) {
+    // 已有 attempt，直接返回
+    return { success: true, data: { attempt_id: existing.attempt_id, started_at: new Date().toISOString() }, message: 'started' }
+  }
+  const attemptId = uid('attempt')
+  store.quizAttempts[attemptKey] = { attempt_id: attemptId, quiz_id: quizId, answers: {}, submitted: false }
+  return { success: true, data: { attempt_id: attemptId, started_at: new Date().toISOString() }, message: 'started' }
+}
+
+async function handleSubmitQuiz(courseId: string, quizId: string, attemptId: string, data: unknown): Promise<ApiResponse<QuizResultData>> {
+  await delay(600)
+  const body = data as { answers: { question_id: string; answer: string }[] }
+  const quizzes = store.quizzes[courseId] || []
+  const q = quizzes.find((x) => x.id === quizId)
+  if (!q) throw { response: { status: 404 } }
+
+  const results: QuizAnswerResult[] = q.questions.map((question) => {
+    const userAnswer = body.answers.find((a) => a.question_id === question.id)?.answer || ''
+    // 简单判断对错（mock 用包含判断）
+    const correctAnswer = (question as unknown as { correct_answer?: string }).correct_answer || ''
+    let isCorrect = false
+    if (question.question_type === 'multi_choice') {
+      // 多选：按逗号分隔，排序后比较
+      const userSet = new Set(userAnswer.split(',').map((s: string) => s.trim()).filter(Boolean))
+      const correctSet = new Set(correctAnswer.split(',').map((s: string) => s.trim()).filter(Boolean))
+      isCorrect = userSet.size === correctSet.size && [...userSet].every((k) => correctSet.has(k))
+    } else if (question.question_type === 'short_answer') {
+      // 简答题：包含关键词即可
+      isCorrect = userAnswer.length > 5
+    } else {
+      isCorrect = userAnswer.trim().toLowerCase() === correctAnswer.toLowerCase()
+    }
+
+    return {
+      question_id: question.id,
+      is_correct: isCorrect,
+      score: isCorrect ? question.score : (question.question_type === 'short_answer' ? Math.floor(question.score * 0.6) : 0),
+      ai_feedback: isCorrect ? '回答正确！' : '回答有误，请参考解析。',
+      correct_answer: correctAnswer,
+      explanation: `标准答案：${correctAnswer || '详见题目解析'}`,
+    }
+  })
+
+  const totalScore = results.reduce((s, r) => s + r.score, 0)
+  const fullScore = q.questions.reduce((s, qq) => s + qq.score, 0)
+
+  const resultData: QuizResultData = {
+    attempt_id: attemptId, total_score: totalScore, full_score: fullScore, results,
+  }
+
+  const attemptKey = `${quizId}_${STUDENT.id}`
+  if (store.quizAttempts[attemptKey]) {
+    store.quizAttempts[attemptKey].submitted = true
+    store.quizAttempts[attemptKey].result = resultData
+    store.quizAttempts[attemptKey].answers = Object.fromEntries(body.answers.map((a) => [a.question_id, a.answer]))
+  }
+
+  return { success: true, data: resultData, message: 'submitted' }
+}
+
+async function handleGetQuizResult(courseId: string, quizId: string, _attemptId: string): Promise<ApiResponse<QuizResultData>> {
+  await delay()
+  const attemptKey = `${quizId}_${STUDENT.id}`
+  const attempt = store.quizAttempts[attemptKey]
+  if (!attempt?.result) throw { response: { status: 404 } }
+  return { success: true, data: attempt.result, message: 'ok' }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 成绩 Mock 处理函数
+// ═══════════════════════════════════════════════════════════════
+
+async function handleGetStudentCourseScores(courseId: string): Promise<ApiResponse<StudentCourseScoresData>> {
+  await delay()
+  const data = store.scoreRecords[courseId]
+  if (!data) {
+    // 返回空数据
+    return {
+      success: true,
+      data: {
+        course_id: courseId, course_name: COURSES[courseId]?.name || '',
+        total_score: 0, rank: 0, total_students: 0, records: [],
+      },
+      message: 'ok',
+    }
+  }
+  return { success: true, data, message: 'ok' }
 }
 
 // ═══════════════════════════════════════════════════════════════
