@@ -50,7 +50,7 @@ export async function getStudentAnnouncements(
   return res as unknown as ApiResponse<StudentAnnouncementListData>
 }
 
-export async function getAnnouncement(
+export async function getStudentAnnouncement(
   courseId: string,
   noticeId: string,
 ): Promise<ApiResponse<AnnouncementDetail>> {

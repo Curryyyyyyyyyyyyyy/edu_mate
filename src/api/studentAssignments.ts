@@ -36,9 +36,13 @@ export async function submitAssignmentText(
   assignmentId: string,
   content: string,
 ): Promise<ApiResponse<SubmissionData>> {
+  const formData = new FormData()
+  formData.append('submit_type', 'text')
+  formData.append('content', content)
+
   const res = await request.post(
     `/student/courses/${courseId}/assignments/${assignmentId}/submit`,
-    { submit_type: 'text', content },
+    formData,
   )
   return res as unknown as ApiResponse<SubmissionData>
 }
