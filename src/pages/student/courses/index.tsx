@@ -7,6 +7,11 @@ import ChatTab from './ChatTab'
 import AssignmentsTab from './AssignmentsTab'
 import SummariesTab from './SummariesTab'
 import LearningPlansTab from './LearningPlansTab'
+import AnnouncementsTab from './AnnouncementsTab'
+import DiscussionsTab from './DiscussionsTab'
+import QuestionsTab from './QuestionsTab'
+import QuizzesTab from './QuizzesTab'
+import ScoresTab from './ScoresTab'
 
 interface OutletContext {
   courses: StudentCourseItem[]
@@ -18,8 +23,13 @@ const TABS = [
   { key: 'sections', label: '课程内容', icon: '📖' },
   { key: 'chat', label: 'AI问答', icon: '💬' },
   { key: 'assignments', label: '作业列表', icon: '📝' },
+  { key: 'quizzes', label: '随堂测验', icon: '📝' },
   { key: 'summaries', label: '知识总结', icon: '📊' },
   { key: 'learning-plans', label: '学习计划', icon: '📅' },
+  { key: 'announcements', label: '课程公告', icon: '📢' },
+  { key: 'discussions', label: '讨论区', icon: '💬' },
+  { key: 'questions', label: '问答', icon: '❓' },
+  { key: 'scores', label: '我的成绩', icon: '📊' },
 ]
 
 export default function StudentCoursePage() {
@@ -124,7 +134,15 @@ export default function StudentCoursePage() {
 
       {/* Tab 导航 */}
       <div className="mb-4 shrink-0 border-b border-slate-200">
-        <nav className="-mb-px flex gap-0 overflow-x-auto" role="tablist">
+        <nav
+          className="-mb-px flex gap-0 overflow-x-auto
+            [&::-webkit-scrollbar]:h-1
+            [&::-webkit-scrollbar-track]:bg-transparent
+            [&::-webkit-scrollbar-thumb]:rounded-full
+            [&::-webkit-scrollbar-thumb]:bg-slate-300
+            hover:[&::-webkit-scrollbar-thumb]:bg-slate-400"
+          role="tablist"
+        >
           {TABS.map((tab) => (
             <button
               key={tab.key}
@@ -149,8 +167,13 @@ export default function StudentCoursePage() {
         {activeTab === 'sections' && <CourseContentTab courseId={courseId} />}
         {activeTab === 'chat' && <ChatTab courseId={courseId} />}
         {activeTab === 'assignments' && <AssignmentsTab courseId={courseId} />}
+        {activeTab === 'quizzes' && <QuizzesTab courseId={courseId} />}
         {activeTab === 'summaries' && <SummariesTab courseId={courseId} />}
         {activeTab === 'learning-plans' && <LearningPlansTab courseId={courseId} />}
+        {activeTab === 'announcements' && <AnnouncementsTab courseId={courseId} />}
+        {activeTab === 'discussions' && <DiscussionsTab courseId={courseId} />}
+        {activeTab === 'questions' && <QuestionsTab courseId={courseId} />}
+        {activeTab === 'scores' && <ScoresTab courseId={courseId} />}
       </div>
     </div>
   )

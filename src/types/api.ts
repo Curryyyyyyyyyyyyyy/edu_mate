@@ -264,7 +264,7 @@ export type SSEEvent = SSEMetaEvent | SSEDeltaEvent | SSEDoneEvent | SSEErrorEve
 // ── 学生端作业 ────────────────────────────────────────────────
 
 export type AssignmentStatus = 'open' | 'closed'
-export type SubmitType = 'text' | 'file'
+export type SubmitType = 'text' | 'file' | 'mixed'
 
 export interface StudentAssignmentItem {
   id: string
@@ -304,6 +304,8 @@ export interface SubmissionData {
   assignment_id: string
   student_id: string
   submit_type: SubmitType
+  content?: string
+  file_urls?: string[]
   submitted_at: string
   status: 'submitted'
 }
@@ -313,6 +315,8 @@ export interface MySubmissionData {
   assignment_id: string
   submit_type: SubmitType
   file_url: string | null
+  file_urls?: string[]
+  content?: string
   submitted_at: string
   status: string
   score: number | null
@@ -847,6 +851,12 @@ export interface StudentQuizDetail {
   section_id?: string
   time_limit_minutes: number | null
   questions: StudentQuizQuestion[]
+  attempt?: {
+    id: string
+    status: string
+    total_score: number | null
+    started_at: string
+  } | null
 }
 
 export interface QuizStartData {
