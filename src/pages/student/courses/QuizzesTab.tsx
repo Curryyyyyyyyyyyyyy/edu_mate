@@ -6,7 +6,7 @@ import {
   submitQuiz,
   getQuizResult,
   saveAnswer,
-  getSavedAnswers,
+  getAttemptDetail,
 } from '../../../api/quizzes'
 import type {
   StudentQuizItem,
@@ -338,16 +338,16 @@ function QuizTakingView({
   // 加载已保存的答案
   useEffect(() => {
     let cancelled = false
-    getSavedAnswers(courseId, quiz.id, attemptId)
+    getAttemptDetail(courseId, quiz.id, attemptId)
       .then((res) => {
         if (cancelled || !res.success || !res.data.answers) return
         const saved: Record<string, string> = {}
         const savedMulti: Record<string, Set<string>> = {}
-        res.data.answers.forEach((a) => {
-          if (a.answer.includes(',')) {
-            savedMulti[a.question_id] = new Set(a.answer.split(',').filter(Boolean))
+        Object.entries(res.data.answers).forEach(([qId, ans]) => {
+          if (ans.includes(',')) {
+            savedMulti[qId] = new Set(ans.split(',').filter(Boolean))
           } else {
-            saved[a.question_id] = a.answer
+            saved[qId] = ans
           }
         })
         setAnswers(saved)

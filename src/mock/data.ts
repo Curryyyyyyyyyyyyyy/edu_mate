@@ -5,6 +5,7 @@
  */
 import type {
   ApiResponse,
+  UploadResult,
   LoginData,
   RegisterData,
   UserInfo,
@@ -164,7 +165,7 @@ const store = {
   }>>,
 
   submissions: {} as Record<string, {
-    id: string; assignment_id: string; submit_type: 'text' | 'file' | 'mixed'; content: string;
+    id: string; assignment_id: string; submit_type: 'text' | 'file'; content: string;
     file_urls?: string[];
     submitted_at: string; score: number | null; ai_score: number | null;
     comments: string | null; deductions: { point: string; minus: number }[];
@@ -419,6 +420,11 @@ export function mockHandle(method: string, url: string, data?: unknown): Promise
   }
   if (method === 'GET' && path === '/api/auth/me') {
     return handleGetMe()
+  }
+
+  // ── 文件上传（独立接口，任意已登录用户可用）───────────
+  if (method === 'POST' && path === '/api/upload') {
+    return handleUpload(data)
   }
 
   // ── 课程 ──────────────────────────────────────────────
@@ -699,6 +705,42 @@ async function handleGetMe(): Promise<ApiResponse<UserInfo>> {
   return { success: true, data: u, message: 'ok' }
 }
 
+async function handleUpload(data: unknown): Promise<ApiResponse<UploadResult>> {
+  await delay(200)
+  let fileName = 'unknown_file'
+  let fileSize = 0
+
+  if (data instanceof FormData) {
+    const file = data.get('file') as File | null
+    if (file) {
+      fileName = file.name
+      fileSize = file.size
+    }
+  }
+
+  // 生成模拟的 file_url
+  const fileId = Math.random().toString(36).substring(2, 8)
+  const safeName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_')
+  const fileUrl = `/files/uploads/${fileId}_${safeName}`
+
+  // 对文本类文件模拟提取文本
+  const isTextBased = /\.(txt|pdf|doc|docx)$/i.test(fileName)
+  const extractedText = isTextBased
+    ? `[Mock 提取文本] 文件 ${fileName} 的内容提取结果。`
+    : null
+
+  return {
+    success: true,
+    data: {
+      file_url: fileUrl,
+      file_name: fileName,
+      file_size: fileSize,
+      extracted_text: extractedText,
+    },
+    message: 'uploaded',
+  }
+}
+
 async function handleGetCourses(): Promise<ApiResponse<{ items: StudentCourseItem[]; total: number }>> {
   await delay()
   const items: StudentCourseItem[] = Object.values(COURSES).map((c) => ({
@@ -833,22 +875,29 @@ async function handleSubmitAssignment(_courseId: string, asgId: string, data: un
     const textContent = fd.get('content') as string | null
     if (textContent) content = textContent
 
-    // 多文件处理
-    const files = fd.getAll('files') as File[]
-    // 向后兼容：旧 API 单文件 fallback
-    const singleFile = fd.get('file') as File | null
-    const allFiles = files.length > 0 ? files : (singleFile ? [singleFile] : [])
+    // 优先读取 file_urls 字段（新 API 两步流程：先上传再提交）
+    const fileUrlsField = fd.get('file_urls') as string | null
+    if (fileUrlsField) {
+      fileUrls = fileUrlsField.split(',').map((u) => u.trim()).filter(Boolean)
+    }
 
-    if (allFiles.length > 0) {
-      fileUrls = allFiles.map((f) => `/files/uploads/${f.name}`)
-      if (!content) {
-        content = allFiles.map((f) => `[文件上传] ${f.name} (${(f.size / 1024).toFixed(1)} KB)`).join('\n')
+    // 向后兼容：旧 API 直接从 FormData 发送文件对象（fallback）
+    if (!fileUrls || fileUrls.length === 0) {
+      const files = fd.getAll('files') as File[]
+      const singleFile = fd.get('file') as File | null
+      const allFiles = files.length > 0 ? files : (singleFile ? [singleFile] : [])
+
+      if (allFiles.length > 0) {
+        fileUrls = allFiles.map((f) => `/files/uploads/${f.name}`)
+        if (!content) {
+          content = allFiles.map((f) => `[文件上传] ${f.name} (${(f.size / 1024).toFixed(1)} KB)`).join('\n')
+        }
       }
     }
   } else if (typeof data === 'object' && data !== null) {
     // JSON 提交（文本模式）
     const obj = data as Record<string, string>
-    submitType = (obj.submit_type === 'mixed' || obj.submit_type === 'file') ? obj.submit_type : 'text'
+    submitType = obj.submit_type === 'file' ? 'file' : 'text'
     content = obj.content || ''
   }
 

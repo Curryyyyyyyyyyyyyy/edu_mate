@@ -14,6 +14,13 @@ export interface ApiError {
   }
 }
 
+export interface UploadResult {
+  file_url: string
+  file_name: string
+  file_size: number
+  extracted_text: string | null
+}
+
 // ── 用户 / 认证 ────────────────────────────────────────────────
 
 export type Role = 'student' | 'teacher'
@@ -264,7 +271,7 @@ export type SSEEvent = SSEMetaEvent | SSEDeltaEvent | SSEDoneEvent | SSEErrorEve
 // ── 学生端作业 ────────────────────────────────────────────────
 
 export type AssignmentStatus = 'open' | 'closed'
-export type SubmitType = 'text' | 'file' | 'mixed'
+export type SubmitType = 'text' | 'file'
 
 export interface StudentAssignmentItem {
   id: string

@@ -129,15 +129,25 @@ export async function saveAnswer(
 }
 
 /**
- * 获取已保存的答案（恢复答题时用）
+ * 获取 attempt 详情（含已保存的答案，恢复答题时用）
+ * GET /student/courses/{course_id}/quizzes/{quiz_id}/attempts/{attempt_id}
  */
-export async function getSavedAnswers(
+export interface AttemptDetail {
+  attempt_id: string;
+  status: string;
+  started_at: string;
+  submitted_at: string | null;
+  answers: Record<string, string>; // question_id → answer
+  answered_count: number;
+}
+
+export async function getAttemptDetail(
   courseId: string,
   quizId: string,
   attemptId: string,
-): Promise<ApiResponse<{ answers: SavedAnswer[] }>> {
+): Promise<ApiResponse<AttemptDetail>> {
   const res = await request.get(
-    `/student/courses/${courseId}/quizzes/${quizId}/attempts/${attemptId}/answers`,
+    `/student/courses/${courseId}/quizzes/${quizId}/attempts/${attemptId}`,
   );
-  return res as unknown as ApiResponse<{ answers: SavedAnswer[] }>;
+  return res as unknown as ApiResponse<AttemptDetail>;
 }

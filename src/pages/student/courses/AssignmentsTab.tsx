@@ -42,6 +42,7 @@ export default function AssignmentsTab({ courseId }: Props) {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
   const [dragOver, setDragOver] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null)
   const [error, setError] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
 
@@ -70,6 +71,7 @@ export default function AssignmentsTab({ courseId }: Props) {
     setSuccessMsg('')
     setContent('')
     setSelectedFiles([])
+    setUploadProgress(null)
   }
 
   const openDetail = async (assignmentId: string) => {
@@ -179,23 +181,23 @@ export default function AssignmentsTab({ courseId }: Props) {
     }
 
     setSubmitting(true)
+    setUploadProgress(null)
     try {
       const res = await submitAssignment(courseId, selected.id, {
         content: content.trim() || undefined,
         files: selectedFiles.length > 0 ? selectedFiles : undefined,
+        onUploadProgress: (current, total) => {
+          setUploadProgress({ current, total })
+        },
       })
 
       if (res.success) {
-        // 本地内容作为 fallback（后端 submit 响应可能不含 content/file_urls）
-        const localFileUrls = selectedFiles.length > 0
-          ? selectedFiles.map((f) => URL.createObjectURL(f))
-          : undefined
         setSubmission({
           id: res.data.id,
           assignment_id: res.data.assignment_id,
           submit_type: res.data.submit_type,
-          file_url: res.data.file_urls?.[0] ?? localFileUrls?.[0] ?? null,
-          file_urls: res.data.file_urls ?? localFileUrls,
+          file_url: res.data.file_urls?.[0] ?? null,
+          file_urls: res.data.file_urls ?? undefined,
           content: res.data.content ?? (content.trim() || undefined),
           submitted_at: res.data.submitted_at,
           status: res.data.status,
@@ -223,6 +225,7 @@ export default function AssignmentsTab({ courseId }: Props) {
       setError('提交失败，请重试')
     } finally {
       setSubmitting(false)
+      setUploadProgress(null)
     }
   }
 
@@ -298,7 +301,7 @@ export default function AssignmentsTab({ courseId }: Props) {
                 提交时间：
                 {new Date(submission.submitted_at).toLocaleString('zh-CN')}
                 {submission.submit_type === 'file' && '（文件提交）'}
-                {submission.submit_type === 'mixed' && '（文件 + 文本）'}
+                {submission.submit_type === 'text' && '（文本提交）'}
               </p>
               {/* 提交的文本内容 */}
               {submission.content != null && (
@@ -309,24 +312,30 @@ export default function AssignmentsTab({ courseId }: Props) {
                   </p>
                 </div>
               )}
-              {/* 提交的文件列表 */}
-              {submission.file_urls && submission.file_urls.length > 0 && (
-                <div className="mt-2 rounded bg-white p-3">
-                  <p className="text-xs font-medium text-slate-500 mb-2">
-                    📎 已上传文件（{submission.file_urls.length} 个）
-                  </p>
-                  <div className="space-y-1">
-                    {submission.file_urls.map((url, i) => {
-                      const fileName = url.split('/').pop() || `文件${i + 1}`
-                      return (
-                        <SubmittedFileItem key={i} url={url} fileName={fileName} />
-                      )
-                    })}
+              {/* 提交的文件（file_urls 数组 或 file_url 单值） */}
+              {(() => {
+                const urls = submission.file_urls?.length
+                  ? submission.file_urls
+                  : submission.file_url ? [submission.file_url] : []
+                if (urls.length === 0) return null
+                return (
+                  <div className="mt-2 rounded bg-white p-3">
+                    <p className="text-xs font-medium text-slate-500 mb-2">
+                      📎 已上传文件（{urls.length} 个）
+                    </p>
+                    <div className="space-y-1">
+                      {urls.map((url, i) => {
+                        const fileName = url.split('/').pop() || `文件${i + 1}`
+                        return (
+                          <SubmittedFileItem key={i} url={url} fileName={fileName} />
+                        )
+                      })}
+                    </div>
                   </div>
-                </div>
-              )}
+                )
+              })()}
               {/* 仅 submit_type=text 且无内容提示 */}
-              {submission.submit_type === 'text' && submission.content == null && submission.file_urls == null && (
+              {submission.submit_type === 'text' && submission.content == null && !submission.file_url && submission.file_urls == null && (
                 <div className="mt-2 rounded bg-white p-3">
                   <p className="text-xs text-slate-400">暂无提交内容详情</p>
                 </div>
@@ -340,6 +349,12 @@ export default function AssignmentsTab({ courseId }: Props) {
                     <p className="mt-1 text-sm text-slate-600">
                       {submission.comments}
                     </p>
+                  )}
+                  {submission.teacher_comment && (
+                    <div className="mt-2 rounded bg-blue-50 p-2">
+                      <p className="text-xs font-medium text-blue-600">👨‍🏫 老师评语</p>
+                      <p className="mt-0.5 text-sm text-slate-700">{submission.teacher_comment}</p>
+                    </div>
                   )}
                   {submission.suggestions.length > 0 && (
                     <div className="mt-2">
@@ -376,6 +391,11 @@ export default function AssignmentsTab({ courseId }: Props) {
               {successMsg && (
                 <div className="mb-3 rounded bg-green-50 px-3 py-2 text-sm text-green-600">
                   {successMsg}
+                </div>
+              )}
+              {uploadProgress && (
+                <div className="mb-3 rounded bg-blue-50 px-3 py-2 text-sm text-blue-600">
+                  📤 正在上传文件 {uploadProgress.current + 1}/{uploadProgress.total} ...
                 </div>
               )}
 
